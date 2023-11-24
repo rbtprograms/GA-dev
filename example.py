@@ -8,4 +8,5 @@ from genetic_algorithm import GeneticAlgorithm
 data = pd.read_csv('./data/baseball.dat', sep=' ')
 estimator = linear_model.LogisticRegression()
 
+#right now it just prints out which model was given to it
 GeneticAlgorithm(data)
