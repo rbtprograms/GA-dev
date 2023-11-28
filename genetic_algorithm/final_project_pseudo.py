@@ -2,51 +2,116 @@
 
 #Pseudocode representation of a genetic algorithm for variable selection
 
-def initialize_population(population_size, chromosome_length):
-	
-	population = []
-	for i in range(population_size):
-		chromosome = generate_random_chromosome(chromosome_length)
-		population.append(chromosome)
+#modules needed
+import random 
+import numpy as np
+from sklearn.linear_model import LinearRegression
+import statsmodels.api as sm
 
-	return population
+def initialize_population(population_size, chromosome_length):
+    """
+    Initialize a population of random chromosomes.
+
+    Parameters:
+    - population_size (int): The size of the population.
+    - chromosome_length (int): The length of each chromosome.
+
+    Returns:
+    - list: A list of random chromosomes.
+    """
+    population = [generate_random_chromosome(chromosome_length) for _ in range(population_size)]
+    return population
 
 
 def generate_random_chromosome(chromosome_length):
-	
-	chromosome = []
-	for i in range(chromosome_length):
-		gene = randomly_select_gene()
-		chromosome.append(gene)
+    """
+    Generate a random binary chromosome
 
-	return chromosome
+    Parameters:
+    - chromosome_length (int): The length of the chromosome.
+
+    Returns:
+    - list: A list representing the random chromosome with 0s and 1s.
+    """
+    chromosome = np.random.randint(2, size=chromosome_length).tolist()
+    return chromosome
+
+def calculate_fitness(chromosome, data, outcome, objective_function="AIC"):
+    """
+    Calculate the fitness of a chromosome.
+
+    Parameters:
+    - chromosome (list of bool): Binary representation of predictors.
+    - data (pd.DataFrame): Input data with predictors.
+    - outcome (pd.Series): Outcome variable.
+    - objective_function (str): "AIC" or "BIC" for the type of fitness to calculate.
+
+    Returns:
+    - float: fitness value.
+    """
+    # Select the predictors according to the chromosome
+    predictors = data.iloc[:, 1:]
+    selected_predictors = predictors.loc[:, chromosome]
+    selected_predictors = sm.add_constant(selected_predictors)
+    
+    # Convert outcome to a NumPy array
+    outcome_array = np.asarray(outcome)
+
+    # Convert selected predictors to a NumPy array
+    predictors_array = np.asarray(selected_predictors.astype(float))
+
+    # Fit linear regression model
+    model = sm.OLS(outcome_array, predictors_array).fit()
+
+    # Calculate objective function inputs
+    rss = model.ssr
+    tss = np.sum((outcome - np.mean(outcome))**2)
+    s = np.sum(chromosome)  # Number of predictors
+    k = s + 2  # Number of parameters including intercept
+    n = len(outcome) 
+    mse = np.mean((outcome - model.predict(predictors_array))**2)
+    
+    if objective_function == "BIC":
+        return n * np.log(rss / n) + k * np.log(n)
+    elif objective_function == "Adjusted R-squared":
+        r_squared = 1 - (rss / tss)
+        return 1 - (1 - (r_squared)) * (n - 1) / (n - s - 1)
+    elif objective_function == "Deviance":
+        return 2 * model.llf
+    elif objective_function == "MSE":
+        return mse
+    elif objective_function == "Mallows CP":
+        return rss + 2 * s * mse / (n - s)
+    else:
+        # default is AIC
+        return n * np.log(rss / n) + 2 * k
+
+def rank(scores):
+        """
+        Return the numeric ranking based on the highest absolute value.
+        """
+        sorted_indices = sorted(range(len(scores)), key=lambda k: abs(scores[k]))
+        return [i + 1 for i in sorted_indices]
 
 
-def randomly_select_gene():
-	gene = random.uniform(0,1) #requires 'random' package
-	return gene
+def calculate_rank_based_fitness(data, outcome, population, population_size, objective_function="AIC"):
+	"""
+    Calculate rank-based fitness scores for a population based on objective function.
 
+    Parameters:
+    - data (pd.DataFrame): Input data with predictors.
+    - outcome (pd.Series): Outcome variable.
+    - population_size (int): The size of the population.
+    - population (list): List of chromosomes
 
-def calculate_fitness(chromosome, population_size, data, outcome):
-	#using AIC to calculate fitness of each chromosome
-
-	s = sum(chromosome) # number of predictors
-	N = population_size
-	predictors = data[chromosome]
-	model = lm(outcome ~ predictors)
-	RSS = sum(outcome - sum(model[coefficients].predictors))
-	AIC = N * log(RSS / N) + 2 * (s + 2)
-
-	return AIC
-
-
-def calculate_rank_based_fitness(population, chromosome, population_size, data, outcome):
-
-	fitness_scores = [calculate_fitness(chromosome, population_size, data, outcome) for chromosome in population]
-	r = rank(fitness_scores) #ranking function maximizing at highest magnitude negative AIC score 
+    Returns:
+    - list of float: Rank-based fitness scores for each chromosome in the population.
+    """
+	fitness_scores = [calculate_fitness(chromosome, data, outcome, objective_function="AIC") for chromosome in population]
+	fitness_ranks = rank(fitness_scores) 
 	p = population_size
+	return [(2*r)/(p*(p+1)) for r in fitness_ranks]
 
-	return (2*r) / (p*(p+1))
 
 
 def select_parents(population):
