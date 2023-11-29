@@ -1,12 +1,13 @@
-## adapted from Eleanor's pseudocode
+# adapted from Eleanor's pseudocode
 
-#Pseudocode representation of a genetic algorithm for variable selection
+# Pseudocode representation of a genetic algorithm for variable selection
 
-#modules needed
-import random 
+# packages needed
 import numpy as np
 from sklearn.linear_model import LinearRegression
 import statsmodels.api as sm
+import pandas as pd
+import os
 
 def initialize_population(population_size, chromosome_length):
     """
@@ -44,7 +45,8 @@ def calculate_fitness(chromosome, data, outcome, objective_function="AIC"):
     - chromosome (list of bool): Binary representation of predictors.
     - data (pd.DataFrame): Input data with predictors.
     - outcome (pd.Series): Outcome variable.
-    - objective_function (str): "AIC" or "BIC" for the type of fitness to calculate.
+    - objective_function (str): Default is AIC, other options are "BIC", "Adjusted R-squared, "Deviance", "MSE", 
+    "Mallows CP". 
 
     Returns:
     - float: fitness value.
@@ -71,6 +73,7 @@ def calculate_fitness(chromosome, data, outcome, objective_function="AIC"):
     n = len(outcome) 
     mse = np.mean((outcome - model.predict(predictors_array))**2)
     
+    # Return fitness functions based on objective function input
     if objective_function == "BIC":
         return n * np.log(rss / n) + k * np.log(n)
     elif objective_function == "Adjusted R-squared":
@@ -93,7 +96,6 @@ def rank(scores):
         sorted_indices = sorted(range(len(scores)), key=lambda k: abs(scores[k]))
         return [i + 1 for i in sorted_indices]
 
-
 def calculate_rank_based_fitness(data, outcome, population, population_size, objective_function="AIC"):
 	"""
     Calculate rank-based fitness scores for a population based on objective function.
@@ -112,8 +114,6 @@ def calculate_rank_based_fitness(data, outcome, population, population_size, obj
 	p = population_size
 	return [(2*r)/(p*(p+1)) for r in fitness_ranks]
 
-
-
 def select_parents(population):
 	# implementing tournament selection
 	# one parent selected with probability proportional to its fitness
@@ -127,7 +127,6 @@ def select_parents(population):
 
 	return parent1, parent2
 
-
 def crossover(parent1, parent2, population_size):
 	#We should choose how many crossover events per offspring we want, defaulting to 1 for now
 	# produces a single offspring
@@ -139,7 +138,6 @@ def crossover(parent1, parent2, population_size):
 
 	return offspring
 
-
 def mutate(chromosome, mutation_rate=0.01):
 
 	# mutation == True with probability 0.01, False otherwise
@@ -149,7 +147,6 @@ def mutate(chromosome, mutation_rate=0.01):
 	new_chromsome = [abs(chromosome[i] - 1) if mutation[i] else chromosome[i] for i in range(len(chromosome))]
 
 	return chromosome
-
 
 def genetic_algorithm(population_size=20, chromosome_length=27, generations=100, mutation_rate=0.01, data, outcome):
 
@@ -180,8 +177,36 @@ def genetic_algorithm(population_size=20, chromosome_length=27, generations=100,
 
 
 
+# test on baseball data
 
+#read in baseball data 
+current_dir = os.getcwd()
+data_folder_path = os.path.join(current_dir, 'GA-dev', 'data')
+file_path = os.path.join(data_folder_path, 'baseball.dat')
+df = pd.read_csv(file_path)
+df_split = df.iloc[:, 0].str.split(expand=True)
+df = pd.concat([df, df_split], axis=1)
 
+# set data parameters
+population_size = 20 # can change
+chromosome_length = df.shape[1] - 1 # number of fields minus outcome column
+outcome = pd.Series(np.log(df[0].astype(float))) # log salary
+objective_function = "BIC"  
+
+# generate random chromosome
+generate_random_chromosome(chromosome_length)
+
+#initialize the population
+population = initialize_population(population_size, chromosome_length)
+
+# calculate fitness for each objective function option
+f_list = ["AIC", "BIC","Adjusted R-squared", "Deviance", "MSE", 
+    "Mallows CP","Not a function"]
+chromosome = population[0]
+fitness_scores = [calculate_fitness(chromosome, df, outcome, objective_function=f) for f in f_list]
+
+# calculate ranked fitness scores for each objective function option
+ranked_fitness_scores = [calculate_rank_based_fitness(data, outcome, population, population_size, objective_function="AIC") for f in f_list]
 
 
 
