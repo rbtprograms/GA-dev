@@ -1,2 +1,4 @@
 __pycache__/
+./genetic_algorithm/__pycache__
+./genetic_algorithm/__pycache__/*
 .pytest_cache

@@ -1,4 +1,4 @@
-from genetic_algorithm import generate_random_chromosome, initialize_population, rank
+from genetic_algorithm import generate_random_chromosome, initialize_population, rank, Generation_Container
 
 def test_generate_random_chromosome():
   chromosome_length = 5
@@ -27,3 +27,11 @@ def test_rank_negatives():
   res = rank(scores)
   assert res[0] == 2
 
+# def test_save_generation_data():
+#   container = Generation_Container()
+#   container.add_generation_data(45)
+#   container.add_generation_data(21)
+#   container.add_generation_data(100)
+#   container.add_generation_data(65)
+#   container.add_generation_data(11)
+#   container.check_last_generations(3)

@@ -28,7 +28,7 @@ def generate_random_chromosome(chromosome_length):
     """
     Generate a random binary chromosome
 
-    Parameters:
+    Parameters: 
     - chromosome_length (int): The length of the chromosome.
 
     Returns:
@@ -175,6 +175,19 @@ def genetic_algorithm(data,population_size=20, chromosome_length=27, generations
 
 	return most_fit_individual
 
+class Generation_Container:
+    def __init__(self, initial_value=0):
+        self._generation_data = {}
+        self._curr_generation = 0
+
+    def add_generation_data(self, individual):
+        self._curr_generation += 1
+        self._generation_data[self._curr_generation] = individual
+
+    def check_last_generations(self, distance_back):
+        target = min(0, self._curr_generation - distance_back)
+        for key in sorted(self._generation_data.keys())[target:]:
+            print(self._generation_data[key])
 
 
 # test on baseball data
