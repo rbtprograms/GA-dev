@@ -1,1 +1,1 @@
-from .algo import GeneticAlgorithm
+from .final_project_pseudo import *
