@@ -176,50 +176,53 @@ def genetic_algorithm(data,population_size=20, chromosome_length=27, generations
 	return most_fit_individual
 
 class Generation_Container:
-    def __init__(self, initial_value=0):
+    def __init__(self):
         self._generation_data = {}
-        self._curr_generation = 0
 
-    def add_generation_data(self, individual):
-        self._curr_generation += 1
-        self._generation_data[self._curr_generation] = individual
+    def add_generation_data(self, score, individual):   
+        curr_generation = len(self._generation_data.keys()) + 1
+        data = {
+            'score': score,
+            'individual': individual
+        }
+        self._generation_data[curr_generation] = data
 
     def check_last_generations(self, distance_back):
-        target = min(0, self._curr_generation - distance_back)
+        target = max(0, len(self._generation_data) - distance_back)
         for key in sorted(self._generation_data.keys())[target:]:
-            print(self._generation_data[key])
+            print(f'Generation {key} yielded: {self._generation_data[key]}')
 
 
 # test on baseball data
 
 #read in baseball data 
-# current_dir = os.getcwd()
-# data_folder_path = os.path.join(current_dir, 'GA-dev', 'data')
-# file_path = os.path.join(data_folder_path, 'baseball.dat')
-# df = pd.read_csv(file_path)
-# df_split = df.iloc[:, 0].str.split(expand=True)
-# df = pd.concat([df, df_split], axis=1)
+current_dir = os.getcwd()
+data_folder_path = os.path.join(current_dir, 'GA-dev', 'data')
+file_path = os.path.join(data_folder_path, 'baseball.dat')
+df = pd.read_csv(file_path)
+df_split = df.iloc[:, 0].str.split(expand=True)
+df = pd.concat([df, df_split], axis=1)
 
-# # set data parameters
-# population_size = 20 # can change
-# chromosome_length = df.shape[1] - 1 # number of fields minus outcome column
-# outcome = pd.Series(np.log(df[0].astype(float))) # log salary
-# objective_function = "BIC"  
+# set data parameters
+population_size = 20 # can change
+chromosome_length = df.shape[1] - 1 # number of fields minus outcome column
+outcome = pd.Series(np.log(df[0].astype(float))) # log salary
+objective_function = "BIC"  
 
-# # generate random chromosome
-# generate_random_chromosome(chromosome_length)
+# generate random chromosome
+generate_random_chromosome(chromosome_length)
 
-# #initialize the population
-# population = initialize_population(population_size, chromosome_length)
+#initialize the population
+population = initialize_population(population_size, chromosome_length)
 
-# # calculate fitness for each objective function option
-# f_list = ["AIC", "BIC","Adjusted R-squared", "Deviance", "MSE", 
-#     "Mallows CP","Not a function"]
-# chromosome = population[0]
-# fitness_scores = [calculate_fitness(chromosome, df, outcome, objective_function=f) for f in f_list]
+# calculate fitness for each objective function option
+f_list = ["AIC", "BIC","Adjusted R-squared", "Deviance", "MSE", 
+    "Mallows CP","Not a function"]
+chromosome = population[0]
+fitness_scores = [calculate_fitness(chromosome, df, outcome, objective_function=f) for f in f_list]
 
-# # calculate ranked fitness scores for each objective function option
-# ranked_fitness_scores = [calculate_rank_based_fitness(data, outcome, population, population_size, objective_function="AIC") for f in f_list]
+# calculate ranked fitness scores for each objective function option
+ranked_fitness_scores = [calculate_rank_based_fitness(data, outcome, population, population_size, objective_function="AIC") for f in f_list]
 
 
 

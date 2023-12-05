@@ -27,11 +27,12 @@ def test_rank_negatives():
   res = rank(scores)
   assert res[0] == 2
 
-# def test_save_generation_data():
-#   container = Generation_Container()
-#   container.add_generation_data(45)
-#   container.add_generation_data(21)
-#   container.add_generation_data(100)
-#   container.add_generation_data(65)
-#   container.add_generation_data(11)
-#   container.check_last_generations(3)
+def test_save_generation_data():
+  container = Generation_Container()
+  container.add_generation_data(45, [1,0,0,1,1])
+  container.add_generation_data(21, [1,0,0,0,0])
+  container.add_generation_data(100, [1,0,1,1,1])
+  container.add_generation_data(65, [1,1,1,1,1])
+  container.add_generation_data(11, [0,0,1,0,1])
+  container.check_last_generations(3)
+  assert type(container) == int
