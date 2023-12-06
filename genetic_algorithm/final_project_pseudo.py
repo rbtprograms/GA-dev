@@ -10,7 +10,7 @@ import pandas as pd
 import os
 import random
 
-def initialize_population(population_size, chromosome_length):
+def initialize_population(population_size, chromosome_length, max_features):
     """
     Initialize a population of random chromosomes.
 
@@ -21,7 +21,7 @@ def initialize_population(population_size, chromosome_length):
     Returns:
     - list: A list of random chromosomes.
     """
-    population = [generate_random_chromosome(chromosome_length) for _ in range(population_size)]
+    population = [generate_random_chromosome(chromosome_length, max_features) for _ in range(population_size)]
 
     return population
 
@@ -29,6 +29,7 @@ def initialize_population(population_size, chromosome_length):
 
 def adjust_chromosome(chromosome, max_features):
     #function to adjust number of features in a chromsome to match max_features
+    print(chromosome)
     current_sum = sum(chromosome)
 
     if current_sum <= max_features:
@@ -75,6 +76,7 @@ def calculate_fitness(chromosome, data, outcome, objective_function="AIC"):
     - float: fitness value.
     """
     # Select the predictors according to the chromosome
+    #print(data)
     predictors = data.iloc[:, 1:]
     selected_predictors = predictors.loc[:, chromosome]
     selected_predictors = sm.add_constant(selected_predictors)
@@ -86,6 +88,8 @@ def calculate_fitness(chromosome, data, outcome, objective_function="AIC"):
     predictors_array = np.asarray(selected_predictors.astype(float))
 
     # Fit linear regression model
+    # print('OUTCOME*****', outcome_array)
+    # print('PREDICTOR*****', predictors_array)
     model = sm.OLS(outcome_array, predictors_array).fit()
 
     # Calculate objective function inputs
@@ -137,7 +141,7 @@ def calculate_rank_based_fitness(data, outcome, population, population_size, obj
 	p = population_size
 	return [(2*r)/(p*(p+1)) for r in fitness_ranks]
 
-def select_tournament_winners(population, winners_per_subgroup):
+def select_tournament_winners(population, winners_per_subgroup, data):
 	# implementing tournament selection
 	# one parent selected with probability proportional to its fitness
 	# other parent selected randomly
@@ -147,14 +151,16 @@ def select_tournament_winners(population, winners_per_subgroup):
     losers = []
     #tournament is a fitness evaluation; winners_per_subgroup is the 
     # number of allowable winners moving onto the next generation
-    fitness_scores = [calculate_fitness(chromosome, len(population), data, outcome) for chromosome in population]  #weights to be used for parent selection
+    fitness_scores = [calculate_fitness(chromosome, data, outcome) for chromosome in population]  #weights to be used for parent selection
     #stores indexes of original popualtion, in descending order of fitness
     sorted_indices = sorted(range(len(fitness_scores)), key=lambda k: fitness_scores[k], reverse=True)
     
     for i in range(winners_per_subgroup):
         winners.append(population[sorted_indices[i]])
         #keep track of winners to remove from rest of breeding pool
+    for i in range(winners_per_subgroup, len(population)):
         indexes_to_remove.append(sorted_indices[i])
+    
 
     #keeping track of losing individuals for random mating later on
     for i in indexes_to_remove:
@@ -167,7 +173,7 @@ def crossover(parent1, parent2, population_size):
 	# produces a single offspring
 
 	recombination_points = range(population_size - 1) #can't recombine at ends of chromosomes
-	recomb_location_off1 = random.choices(recombination_points, replace=True)
+	recomb_location_off1 = np.random.choice(recombination_points, replace=True)
 
 	offspring = parent1[:recomb_location_off1] + parent2[recomb_location_off1:]
     
@@ -180,13 +186,13 @@ def mutate(chromosome, mutation_rate, max_features):
     mutation = [random.random() < mutation_rate for i in range(len(chromosome))]
 
     # '0' to '1' mutation or '1' to '0' mutation if mutation == True
-    new_chromsome = [abs(chromosome[i] - 1) if mutation[i] else chromosome[i] for i in range(len(chromosome))]
+    new_chromosome = [abs(chromosome[i] - 1) if mutation[i] else chromosome[i] for i in range(len(chromosome))]
 
     #ensure chromosome doesn't exceed max_features
     #this checks for too many features gained from both crossover and mutation
     new_chromosome = adjust_chromosome(new_chromosome, max_features)
 
-    return new_chromsome
+    return new_chromosome
 
 def genetic_algorithm(data,population_size=20, chromosome_length=27, generations=100, mutation_rate=0.01, max_features=10):
 
@@ -202,7 +208,7 @@ def genetic_algorithm(data,population_size=20, chromosome_length=27, generations
         population_copy = population[:] #make a copy to keep track of removed individuals
 
         #random population subgroups for tournament selection
-        for _ in range(num_sets):
+        for _ in range(int(num_sets)):
              rand_sample = random.sample(population_copy, set_size)
              pop_subgroups.append(rand_sample)
 
@@ -214,22 +220,28 @@ def genetic_algorithm(data,population_size=20, chromosome_length=27, generations
         all_winners = []
         all_losers = []
         for group in pop_subgroups:
-            winners, losers = select_tournament_winners(group, 1) #selecting 1 winner per subgroup
-            all_winners.extend(winners)
-            all_losers.extend(losers)
+            winners, losers = select_tournament_winners(group, 1, data) #selecting 1 winner per subgroup
+            for winner in winners:
+                all_winners.append(winner)
+            for loser in losers:
+                all_losers.append(loser)
 
         #parent selection and child generation
         for ind in all_winners:
             parent1 = ind
             parent2 = all_losers.pop(random.randrange(len(all_losers))) #removes parent2 from loser list and returns selected parent2
-            child1 = crossover(parent1, parent2)
-            child2 = crossover(parent1, parent2)
-            child3 = crossover(parent1, parent2)
+            child1 = crossover(parent1, parent2,population_size)
+            child2 = crossover(parent1, parent2,population_size)
+            child3 = crossover(parent1, parent2,population_size)
 
             #mutation
+            #print('EGNERATION', g)
+            #print('CHILD1', child1)
             child1 = mutate(child1, mutation_rate, max_features)
+            #print('CHILD2', child2)
             child2 = mutate(child2, mutation_rate, max_features)
-            child3 = mutate(child2, mutation_rate, max_features)
+            #print('CHILD3', child3)
+            child3 = mutate(child3, mutation_rate, max_features)
 
             new_population.append(child1)
             new_population.append(child2)
@@ -238,9 +250,14 @@ def genetic_algorithm(data,population_size=20, chromosome_length=27, generations
         #reproduction between randomly selected leftover individuals 
         for _ in range(population_size - len(new_population)): #how many more children we need to add from randoms to maintain pop size
             #sampled with replacement to avoid running out of new parents 
+            print('WINNERS****: ', all_winners)
+            print('LOSERS****: ', all_losers)
             parent1 = random.sample(all_losers, 1)
             parent2 = random.sample(all_losers, 1)
-            child1 = crossover(parent1, parent2)
+            print('parent1', parent1)
+            print('parent2', parent2)
+            child1 = crossover(parent1, parent2, population_size)
+            print('CHILD1 - 2', child1)
             #mutation
             child1 = mutate(child1, mutation_rate, max_features)
             new_population.append(child1)
@@ -253,9 +270,9 @@ def genetic_algorithm(data,population_size=20, chromosome_length=27, generations
 
         population = new_population #non-overlapping generations
 
-		most_fit_individual = population[max(rank_fitness_scores)]
+        most_fit_individual = population[max(rank_fitness_scores)]
 
-	return most_fit_individual
+    return most_fit_individual
 
 
 class Generation_Container:
@@ -278,9 +295,9 @@ class Generation_Container:
 
 # test on baseball data
 
-#read in baseball data 
+# read in baseball data 
 current_dir = os.getcwd()
-data_folder_path = os.path.join(current_dir, 'GA-dev', 'data')
+data_folder_path = os.path.join(current_dir, 'data')
 file_path = os.path.join(data_folder_path, 'baseball.dat')
 df = pd.read_csv(file_path)
 df_split = df.iloc[:, 0].str.split(expand=True)
@@ -293,10 +310,10 @@ outcome = pd.Series(np.log(df[0].astype(float))) # log salary
 objective_function = "BIC"  
 
 # generate random chromosome
-generate_random_chromosome(chromosome_length)
+generate_random_chromosome(chromosome_length, chromosome_length)
 
 #initialize the population
-population = initialize_population(population_size, chromosome_length)
+population = initialize_population(population_size, chromosome_length, chromosome_length)
 
 # calculate fitness for each objective function option
 f_list = ["AIC", "BIC","Adjusted R-squared", "Deviance", "MSE", 
@@ -305,8 +322,9 @@ chromosome = population[0]
 fitness_scores = [calculate_fitness(chromosome, df, outcome, objective_function=f) for f in f_list]
 
 # calculate ranked fitness scores for each objective function option
-ranked_fitness_scores = [calculate_rank_based_fitness(data, outcome, population, population_size, objective_function="AIC") for f in f_list]
-
+ranked_fitness_scores = [calculate_rank_based_fitness(df, outcome, population, population_size, objective_function="AIC") for f in f_list]
+#print(ranked_fitness_scores)
+print(genetic_algorithm(df))
 
 
 
