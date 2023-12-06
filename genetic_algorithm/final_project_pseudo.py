@@ -29,7 +29,6 @@ def initialize_population(population_size, chromosome_length, max_features):
 
 def adjust_chromosome(chromosome, max_features):
     #function to adjust number of features in a chromsome to match max_features
-    print(chromosome)
     current_sum = sum(chromosome)
 
     if current_sum <= max_features:
@@ -88,8 +87,6 @@ def calculate_fitness(chromosome, data, outcome, objective_function="AIC"):
     predictors_array = np.asarray(selected_predictors.astype(float))
 
     # Fit linear regression model
-    # print('OUTCOME*****', outcome_array)
-    # print('PREDICTOR*****', predictors_array)
     model = sm.OLS(outcome_array, predictors_array).fit()
 
     # Calculate objective function inputs
@@ -197,6 +194,7 @@ def mutate(chromosome, mutation_rate, max_features):
 def genetic_algorithm(data,population_size=20, chromosome_length=27, generations=100, mutation_rate=0.01, max_features=10):
 
     population = initialize_population(population_size, chromosome_length, max_features)
+    generation_data = Generation_Container()
 
     for g in range(generations): #main iteration
         # rank_fitness_scores = calculate_rank_based_fitness(population, chromosome, population_size, data, outcome)
@@ -235,12 +233,8 @@ def genetic_algorithm(data,population_size=20, chromosome_length=27, generations
             child3 = crossover(parent1, parent2,population_size)
 
             #mutation
-            #print('EGNERATION', g)
-            #print('CHILD1', child1)
             child1 = mutate(child1, mutation_rate, max_features)
-            #print('CHILD2', child2)
             child2 = mutate(child2, mutation_rate, max_features)
-            #print('CHILD3', child3)
             child3 = mutate(child3, mutation_rate, max_features)
 
             new_population.append(child1)
@@ -250,27 +244,24 @@ def genetic_algorithm(data,population_size=20, chromosome_length=27, generations
         #reproduction between randomly selected leftover individuals 
         for _ in range(population_size - len(new_population)): #how many more children we need to add from randoms to maintain pop size
             #sampled with replacement to avoid running out of new parents 
-            print('WINNERS****: ', all_winners)
-            print('LOSERS****: ', all_losers)
-            parent1 = random.sample(all_losers, 1)
-            parent2 = random.sample(all_losers, 1)
-            print('parent1', parent1)
-            print('parent2', parent2)
+            parent1 = random.sample(all_losers, 1)[0]
+            parent2 = random.sample(all_losers, 1)[0]
             child1 = crossover(parent1, parent2, population_size)
-            print('CHILD1 - 2', child1)
             #mutation
             child1 = mutate(child1, mutation_rate, max_features)
             new_population.append(child1)
 
 
-        #some sort of check here to make sure len(new_population) == len(old_population)?
-
         #some function to check if we should terminate early, ie. (new fitness scores - previous fitness scores) < threshold ?
         #should this be determined from winner pool only?
 
+        #save generation data
+        #check the difference across generations for an exit condition
         population = new_population #non-overlapping generations
 
-        most_fit_individual = population[max(rank_fitness_scores)]
+        #most_fit_individual = population[max(rank_fitness_scores)]
+
+        #generation_data.add_generation_data(score, individual)
 
     return most_fit_individual
 
