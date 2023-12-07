@@ -327,15 +327,13 @@ data_folder_path = os.path.join(current_dir, 'GA-dev/genetic_algorithm/data')
 file_path = os.path.join(data_folder_path, 'baseball.dat')
 data = pd.read_csv(file_path)
 
-
-
 import time
 start = time.time()
 genetic_algorithm(data,population_size=20, chromosome_length=27, generations=100, mutation_rate=0.01, max_features=10, 
                       outcome_index=0, objective_function="AIC", log_outcome=True)
 time.time()-start
-
-
+# -439.67068736759944
+# 17.86384630203247
 
 
 
