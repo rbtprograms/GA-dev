@@ -15,20 +15,35 @@ def initialize_population(population_size, chromosome_length, max_features):
     Initialize a population of random chromosomes.
 
     Parameters:
-    - population_size (int): The size of the population.
-    - chromosome_length (int): The length of each chromosome.
+    - population_size (int): The size of the population. Must be a positive integer.
+    - chromosome_length (int): The length of each chromosome. Must be a positive integer.
+    - max_features (int): The maximum number of features. Must be a positive integer.
 
     Returns:
     - list: A list of random chromosomes.
     """
+    assert isinstance(population_size, int) and population_size > 0, "population_size must be a positive integer"
+    assert isinstance(chromosome_length, int) and chromosome_length > 0, "chromosome_length must be a positive integer"
+    assert isinstance(max_features, int) and max_features > 0, "max_features must be a positive integer"
+
     population = [generate_random_chromosome(chromosome_length, max_features) for _ in range(population_size)]
 
     return population
 
-
-
 def adjust_chromosome(chromosome, max_features):
-    #function to adjust number of features in a chromsome to match max_features
+    """
+    Adjust the number of features in a chromosome to match the specified max_features.
+
+    Parameters:
+    - chromosome (list): Binary list of 0s and 1s representing features.
+    - max_features (int): The desired maximum number of features. Must be a positive integer.
+
+    Returns:
+    - list: Adjusted chromosome with the specified max_features.
+    """
+    assert all(bit in {0, 1} for bit in chromosome), "Chromosome must be a binary list of 0s and 1s"
+    assert isinstance(max_features, int) and max_features > 0, "max_features must be a positive integer"
+
     current_sum = sum(chromosome)
 
     if current_sum <= max_features:
@@ -43,45 +58,59 @@ def adjust_chromosome(chromosome, max_features):
     return chromosome
 
 
+
 def generate_random_chromosome(chromosome_length, max_features):
     """
     Generate a random binary chromosome
 
     Parameters: 
     - chromosome_length (int): The length of the chromosome.
-    - max_features (int): The maximum number of allowable features to include.
+    - max_features (int): The maximum number of features. Must be a positive integer.
 
     Returns:
     - list: A list representing the random chromosome with 0s and 1s.
     """
+    assert isinstance(chromosome_length, int) and chromosome_length > 0, "chromosome_length must be a positive integer"
+    assert isinstance(max_features, int) and max_features > 0, "max_features must be a positive integer"
+    
     chromosome = np.random.randint(2, size=chromosome_length).tolist()
     #ensure that the new chromsome doesn't exceed the max allowable features
     chromosome = adjust_chromosome(chromosome, max_features)
 
     return chromosome
 
-def calculate_fitness(chromosome, data, outcome, objective_function="AIC"):
+def calculate_fitness(chromosome, data, outcome_index, objective_function="AIC", log_outcome=True):
     """
     Calculate the fitness of a chromosome.
 
     Parameters:
     - chromosome (list of bool): Binary representation of predictors.
     - data (pd.DataFrame): Input data with predictors.
-    - outcome (pd.Series): Outcome variable.
+    - outcome_index (int): Index of outcome column (0 index).
     - objective_function (str): Default is AIC, other options are "BIC", "Adjusted R-squared, "Deviance", "MSE", 
     "Mallows CP". 
+    - log_outcome (bool): True if the outcome variable is on the log scale, False else.
 
     Returns:
     - float: fitness value.
     """
+
+    if log_outcome == True:
+        outcome = pd.Series(np.log(data[outcome_index].astype(float)))
+        outcome_array = np.asarray(outcome)
+    else:
+        outcome = pd.Series(data[outcome_index].astype(float))
+        outcome_array = np.asarray(outcome)
+        
     # Select the predictors according to the chromosome
-    #print(data)
-    predictors = data.iloc[:, 1:]
+    if outcome_index > 0:
+        predictors_1 = data.iloc[:, :outcome_index]
+        predictors = pd.concat([predictors_1, data.iloc[:, outcome_index+1:]], axis=1)
+    else:
+        predictors = data.iloc[:, outcome_index+1:]
+        
     selected_predictors = predictors.loc[:, chromosome]
     selected_predictors = sm.add_constant(selected_predictors)
-    
-    # Convert outcome to a NumPy array
-    outcome_array = np.asarray(outcome)
 
     # Convert selected predictors to a NumPy array
     predictors_array = np.asarray(selected_predictors.astype(float))
@@ -120,7 +149,7 @@ def rank(scores):
     sorted_indices = sorted(range(len(scores)), key=lambda k: abs(scores[k]))
     return [i + 1 for i in sorted_indices]
 
-def calculate_rank_based_fitness(data, outcome, population, population_size, objective_function="AIC"):
+ def calculate_rank_based_fitness(data, outcome, population, population_size, objective_function="AIC"):
 	"""
     Calculate rank-based fitness scores for a population based on objective function.
 
@@ -138,7 +167,7 @@ def calculate_rank_based_fitness(data, outcome, population, population_size, obj
 	p = population_size
 	return [(2*r)/(p*(p+1)) for r in fitness_ranks]
 
-def select_tournament_winners(population, winners_per_subgroup, data):
+def select_tournament_winners(population, winners_per_subgroup, data, outcome_index, objective_function="AIC", log_outcome=True):
 	# implementing tournament selection
 	# one parent selected with probability proportional to its fitness
 	# other parent selected randomly
@@ -148,7 +177,7 @@ def select_tournament_winners(population, winners_per_subgroup, data):
     losers = []
     #tournament is a fitness evaluation; winners_per_subgroup is the 
     # number of allowable winners moving onto the next generation
-    fitness_scores = [calculate_fitness(chromosome, data, outcome) for chromosome in population]  #weights to be used for parent selection
+    fitness_scores = [calculate_fitness(chromosome, data, outcome_index, objective_function, log_outcome) for chromosome in population]  #weights to be used for parent selection
     #stores indexes of original popualtion, in descending order of fitness
     sorted_indices = sorted(range(len(fitness_scores)), key=lambda k: fitness_scores[k], reverse=True)
     
@@ -191,7 +220,8 @@ def mutate(chromosome, mutation_rate, max_features):
 
     return new_chromosome
 
-def genetic_algorithm(data,population_size=20, chromosome_length=27, generations=100, mutation_rate=0.01, max_features=10):
+def genetic_algorithm(data,population_size=20, chromosome_length=27, generations=100, mutation_rate=0.01, max_features=10, 
+                      outcome_index=0, objective_function="AIC", log_outcome=True):
 
     population = initialize_population(population_size, chromosome_length, max_features)
     generation_data = Generation_Container()
@@ -207,18 +237,18 @@ def genetic_algorithm(data,population_size=20, chromosome_length=27, generations
 
         #random population subgroups for tournament selection
         for _ in range(int(num_sets)):
-             rand_sample = random.sample(population_copy, set_size)
-             pop_subgroups.append(rand_sample)
+            rand_sample = random.sample(population_copy, set_size)
+            pop_subgroups.append(rand_sample)
 
-             #remove sampled individuals from original parent population
-             population_copy = [element for element in population_copy if element not in rand_sample]
+            # remove sampled individuals from original parent population
+            # population_copy = [element for element in population_copy if element not in rand_sample]
 
         #tournament selection- choose top n individuals from each subpopulation to 
         #become parents, partnered with a random individual
         all_winners = []
         all_losers = []
         for group in pop_subgroups:
-            winners, losers = select_tournament_winners(group, 1, data) #selecting 1 winner per subgroup
+            winners, losers = select_tournament_winners(group, 1, data, outcome_index, objective_function, log_outcome) #selecting 1 winner per subgroup
             for winner in winners:
                 all_winners.append(winner)
             for loser in losers:
@@ -255,13 +285,18 @@ def genetic_algorithm(data,population_size=20, chromosome_length=27, generations
         #some function to check if we should terminate early, ie. (new fitness scores - previous fitness scores) < threshold ?
         #should this be determined from winner pool only?
 
-        #save generation data
         #check the difference across generations for an exit condition
+        
         population = new_population #non-overlapping generations
+        
+        #list of fitness score for each chromosome in the population
+        scores = [calculate_fitness(individual, data, outcome_index, objective_function, log_outcome) for individual in population]
 
-        #most_fit_individual = population[max(rank_fitness_scores)]
-
-        #generation_data.add_generation_data(score, individual)
+        #save generation data
+        generation_data.add_generation_data([individual for individual in population], scores)
+        
+        #find fittest individual
+        most_fit_individual = max(scores)
 
     return most_fit_individual
 
@@ -288,39 +323,17 @@ class Generation_Container:
 
 # read in baseball data 
 current_dir = os.getcwd()
-data_folder_path = os.path.join(current_dir, 'data')
+data_folder_path = os.path.join(current_dir, 'GA-dev/genetic_algorithm/data')
 file_path = os.path.join(data_folder_path, 'baseball.dat')
-df = pd.read_csv(file_path)
-df_split = df.iloc[:, 0].str.split(expand=True)
-df = pd.concat([df, df_split], axis=1)
-
-# set data parameters
-population_size = 20 # can change
-chromosome_length = df.shape[1] - 1 # number of fields minus outcome column
-outcome = pd.Series(np.log(df[0].astype(float))) # log salary
-objective_function = "BIC"  
-
-# generate random chromosome
-generate_random_chromosome(chromosome_length, chromosome_length)
-
-#initialize the population
-population = initialize_population(population_size, chromosome_length, chromosome_length)
-
-# calculate fitness for each objective function option
-f_list = ["AIC", "BIC","Adjusted R-squared", "Deviance", "MSE", 
-    "Mallows CP","Not a function"]
-chromosome = population[0]
-fitness_scores = [calculate_fitness(chromosome, df, outcome, objective_function=f) for f in f_list]
-
-# calculate ranked fitness scores for each objective function option
-ranked_fitness_scores = [calculate_rank_based_fitness(df, outcome, population, population_size, objective_function="AIC") for f in f_list]
-#print(ranked_fitness_scores)
-print(genetic_algorithm(df))
+data = pd.read_csv(file_path)
 
 
 
-
-
+import time
+start = time.time()
+genetic_algorithm(data,population_size=20, chromosome_length=27, generations=100, mutation_rate=0.01, max_features=10, 
+                      outcome_index=0, objective_function="AIC", log_outcome=True)
+time.time()-start
 
 
 
