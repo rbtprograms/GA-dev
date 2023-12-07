@@ -1,7 +1,3 @@
-# adapted from Eleanor's pseudocode
-
-# Pseudocode representation of a genetic algorithm for variable selection
-
 # packages needed
 import numpy as np
 from sklearn.linear_model import LinearRegression
@@ -142,6 +138,7 @@ def calculate_fitness(chromosome, data, outcome_index, objective_function="AIC",
         # default is AIC
         return n * np.log(rss / n) + 2 * k
 
+# ignore this function for now
 def rank(scores):
     """
     Return the numeric ranking based on the highest absolute value.
@@ -149,6 +146,7 @@ def rank(scores):
     sorted_indices = sorted(range(len(scores)), key=lambda k: abs(scores[k]))
     return [i + 1 for i in sorted_indices]
 
+# ignore this function as well
  def calculate_rank_based_fitness(data, outcome, population, population_size, objective_function="AIC"):
 	"""
     Calculate rank-based fitness scores for a population based on objective function.
@@ -225,10 +223,10 @@ def genetic_algorithm(data,population_size=20, chromosome_length=27, generations
 
     population = initialize_population(population_size, chromosome_length, max_features)
     generation_data = Generation_Container()
+    max_score_generation = []
 
     for g in range(generations): #main iteration
-        # rank_fitness_scores = calculate_rank_based_fitness(population, chromosome, population_size, data, outcome)
-
+        
         new_population = []
         pop_subgroups = []
         set_size = 5 #arbitrary starting value 
@@ -270,6 +268,9 @@ def genetic_algorithm(data,population_size=20, chromosome_length=27, generations
             new_population.append(child1)
             new_population.append(child2)
             new_population.append(child3)
+            
+        if not new_population:  # Check if new_population is empty
+            break
         
         #reproduction between randomly selected leftover individuals 
         for _ in range(population_size - len(new_population)): #how many more children we need to add from randoms to maintain pop size
@@ -281,24 +282,36 @@ def genetic_algorithm(data,population_size=20, chromosome_length=27, generations
             child1 = mutate(child1, mutation_rate, max_features)
             new_population.append(child1)
 
-
-        #some function to check if we should terminate early, ie. (new fitness scores - previous fitness scores) < threshold ?
-        #should this be determined from winner pool only?
-
+        max_score_generation.append(max(calculate_fitness(individual, data, outcome_index, objective_function, log_outcome) for individual in new_population))
+        
+        # terminate if the max fitness score in a generation converges
+        if g == 0:
+            None
+        elif abs(max_score_generation[g] - max_score_generation[g-1]) < 1e-15:
+            break
+        
         #check the difference across generations for an exit condition
         
         population = new_population #non-overlapping generations
         
-        #list of fitness score for each chromosome in the population
-        scores = [calculate_fitness(individual, data, outcome_index, objective_function, log_outcome) for individual in population]
-
-        #save generation data
-        generation_data.add_generation_data([individual for individual in population], scores)
+    #list of lists of chromosome & fitness score in population
+    individual_scores = [[individual,calculate_fitness(individual, data, outcome_index, objective_function, log_outcome)] for individual in population]
         
-        #find fittest individual
-        most_fit_individual = max(scores)
+    #save generation data
+    generation_data.add_generation_data([individual[1] for individual in individual_scores], [score[0] for score in individual_scores])
+        
+    #find the index of the fittest individual
+    most_fit_index = max(range(len(individual_scores)), key=lambda i: individual_scores[i][0])
+    most_fit_individual = individual_scores[most_fit_index]
+        
+    #find the corresponding fields from the fittest individual 
+    chromosome = most_fit_individual[0]
+    chromosome.insert(outcome_index, 0)
+    column_names = data.columns.tolist()
+    fields = column_names[0].split()
+    selected_fields = [fields[i] for i, value in enumerate(chromosome) if value == 1]
 
-    return most_fit_individual
+    return chromosome, selected_fields, most_fit_individual[1]
 
 
 class Generation_Container:
@@ -329,12 +342,9 @@ data = pd.read_csv(file_path)
 
 import time
 start = time.time()
-genetic_algorithm(data,population_size=20, chromosome_length=27, generations=100, mutation_rate=0.01, max_features=10, 
+genetic_algorithm(data,population_size=20, chromosome_length=28, generations=100, mutation_rate=0.01, max_features=10, 
                       outcome_index=0, objective_function="AIC", log_outcome=True)
 time.time()-start
-# -439.67068736759944
-# 17.86384630203247
-
 
 
 
