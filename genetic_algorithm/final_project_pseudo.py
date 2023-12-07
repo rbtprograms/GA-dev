@@ -268,9 +268,6 @@ def genetic_algorithm(data,population_size=20, chromosome_length=27, generations
             new_population.append(child1)
             new_population.append(child2)
             new_population.append(child3)
-            
-        if not new_population:  # Check if new_population is empty
-            break
         
         #reproduction between randomly selected leftover individuals 
         for _ in range(population_size - len(new_population)): #how many more children we need to add from randoms to maintain pop size
@@ -285,7 +282,7 @@ def genetic_algorithm(data,population_size=20, chromosome_length=27, generations
         #gen_max_score = max(calculate_fitness(individual, data, outcome_index, objective_function, log_outcome) for individual in new_population)
         gen_scores = [[individual,calculate_fitness(individual, data, outcome_index, objective_function, log_outcome)] for individual in population]
         #print(gen_scores)
-        gen_max_individual_data = min(gen_scores, key=lambda x: x[1])
+        gen_max_individual_data = max(gen_scores, key=lambda x: abs(x[1]))
         #print('YEA*****', lowest_score_entry)
         generation_data.add_generation_data(gen_max_individual_data[1], gen_max_individual_data[0])
         #max_score_generation.append(max(calculate_fitness(individual, data, outcome_index, objective_function, log_outcome) for individual in new_population))
@@ -304,25 +301,9 @@ def genetic_algorithm(data,population_size=20, chromosome_length=27, generations
         
         population = new_population #non-overlapping generations
         
-    #list of lists of chromosome & fitness score in population
-    individual_scores = [[individual,calculate_fitness(individual, data, outcome_index, objective_function, log_outcome)] for individual in population]
-        
     #save generation data
     #generation_data.add_generation_data([individual[1] for individual in individual_scores], [score[0] for score in individual_scores])
     generation_data.show_all_generations()
-    #find the index of the fittest individual
-    most_fit_index = max(range(len(individual_scores)), key=lambda i: individual_scores[i][0])
-    most_fit_individual = individual_scores[most_fit_index]
-        
-    #find the corresponding fields from the fittest individual 
-    chromosome = most_fit_individual[0]
-    chromosome.insert(outcome_index, 0)
-    column_names = data.columns.tolist()
-    #print(column_names)
-    fields = column_names[0].split()
-    selected_fields = [column_names[i] for i, value in enumerate(chromosome) if value == 1]
-
-    return chromosome, selected_fields, most_fit_individual[1]
 
 
 class Generation_Container:
@@ -359,7 +340,7 @@ class Generation_Container:
 
 # read in baseball data 
 current_dir = os.getcwd()
-data_folder_path = os.path.join(current_dir, 'genetic_algorithm/data')
+data_folder_path = os.path.join(current_dir, 'GA-dev/genetic_algorithm/data')
 file_path = os.path.join(data_folder_path, 'baseball.dat')
 data = pd.read_csv(file_path, delimiter=' ')
 
