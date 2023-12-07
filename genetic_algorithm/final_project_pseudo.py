@@ -92,10 +92,10 @@ def calculate_fitness(chromosome, data, outcome_index, objective_function="AIC",
     """
 
     if log_outcome == True:
-        outcome = pd.Series(np.log(data[outcome_index].astype(float)))
+        outcome = pd.Series(np.log(data.iloc[:, outcome_index].astype(float)))
         outcome_array = np.asarray(outcome)
     else:
-        outcome = pd.Series(data[outcome_index].astype(float))
+        outcome = pd.Series(data.iloc[:, outcome_index].astype(float))
         outcome_array = np.asarray(outcome)
         
     # Select the predictors according to the chromosome
@@ -104,8 +104,8 @@ def calculate_fitness(chromosome, data, outcome_index, objective_function="AIC",
         predictors = pd.concat([predictors_1, data.iloc[:, outcome_index+1:]], axis=1)
     else:
         predictors = data.iloc[:, outcome_index+1:]
-        
-    selected_predictors = predictors.loc[:, chromosome]
+    
+    selected_predictors = predictors.loc[:, [bool(x) for x in chromosome]]
     selected_predictors = sm.add_constant(selected_predictors)
 
     # Convert selected predictors to a NumPy array
@@ -147,7 +147,7 @@ def rank(scores):
     return [i + 1 for i in sorted_indices]
 
 # ignore this function as well
- def calculate_rank_based_fitness(data, outcome, population, population_size, objective_function="AIC"):
+def calculate_rank_based_fitness(data, outcome, population, population_size, objective_function="AIC"):
 	"""
     Calculate rank-based fitness scores for a population based on objective function.
 
@@ -282,14 +282,24 @@ def genetic_algorithm(data,population_size=20, chromosome_length=27, generations
             child1 = mutate(child1, mutation_rate, max_features)
             new_population.append(child1)
 
-        max_score_generation.append(max(calculate_fitness(individual, data, outcome_index, objective_function, log_outcome) for individual in new_population))
+        #gen_max_score = max(calculate_fitness(individual, data, outcome_index, objective_function, log_outcome) for individual in new_population)
+        gen_scores = [[individual,calculate_fitness(individual, data, outcome_index, objective_function, log_outcome)] for individual in population]
+        #print(gen_scores)
+        gen_max_individual_data = min(gen_scores, key=lambda x: x[1])
+        #print('YEA*****', lowest_score_entry)
+        generation_data.add_generation_data(gen_max_individual_data[1], gen_max_individual_data[0])
+        #max_score_generation.append(max(calculate_fitness(individual, data, outcome_index, objective_function, log_outcome) for individual in new_population))
         
         # terminate if the max fitness score in a generation converges
         if g == 0:
             None
-        elif abs(max_score_generation[g] - max_score_generation[g-1]) < 1e-15:
+        #elif abs(max_score_generation[g] - max_score_generation[g-1]) < 1e-15:
+        #    break
+        if generation_data.check_diff_last_generations(5) < .1:
             break
-        
+        #print('diffs: ', generation_data.check_diff_last_generations(5))
+        # if g==100:
+        #     break
         #check the difference across generations for an exit condition
         
         population = new_population #non-overlapping generations
@@ -298,8 +308,8 @@ def genetic_algorithm(data,population_size=20, chromosome_length=27, generations
     individual_scores = [[individual,calculate_fitness(individual, data, outcome_index, objective_function, log_outcome)] for individual in population]
         
     #save generation data
-    generation_data.add_generation_data([individual[1] for individual in individual_scores], [score[0] for score in individual_scores])
-        
+    #generation_data.add_generation_data([individual[1] for individual in individual_scores], [score[0] for score in individual_scores])
+    generation_data.show_all_generations()
     #find the index of the fittest individual
     most_fit_index = max(range(len(individual_scores)), key=lambda i: individual_scores[i][0])
     most_fit_individual = individual_scores[most_fit_index]
@@ -308,43 +318,56 @@ def genetic_algorithm(data,population_size=20, chromosome_length=27, generations
     chromosome = most_fit_individual[0]
     chromosome.insert(outcome_index, 0)
     column_names = data.columns.tolist()
+    #print(column_names)
     fields = column_names[0].split()
-    selected_fields = [fields[i] for i, value in enumerate(chromosome) if value == 1]
+    selected_fields = [column_names[i] for i, value in enumerate(chromosome) if value == 1]
 
     return chromosome, selected_fields, most_fit_individual[1]
 
 
 class Generation_Container:
     def __init__(self):
-        self._generation_data = {}
+        self._generation_individuals = []
+        self._generation_scores = []
 
-    def add_generation_data(self, score, individual):   
-        curr_generation = len(self._generation_data.keys()) + 1
-        data = {
-            'score': score,
-            'individual': individual
-        }
-        self._generation_data[curr_generation] = data
+    def add_generation_data(self, score, individual):
+        self._generation_individuals.append(individual)
+        self._generation_scores.append(score)
+
+    def show_all_generations(self):
+        for i, _ in enumerate(self._generation_individuals):
+            print(f'Generation {i+1} yielded: {self._generation_scores[i]} {self._generation_individuals[i]}')
+
 
     def check_last_generations(self, distance_back):
-        target = max(0, len(self._generation_data) - distance_back)
-        for key in sorted(self._generation_data.keys())[target:]:
-            print(f'Generation {key} yielded: {self._generation_data[key]}')
+        target = max(0, len(self._generation_individuals) - distance_back)
+        for i, _ in enumerate(self._generation_individuals[target:]):
+            print(f'Generation {len(self._generation_individuals) - distance_back + i + 1} yielded: {self._generation_scores[i]} {self._generation_individuals[i]}')
 
+    def check_diff_last_generations(self, distance_back):
+        target = max(0, len(self._generation_individuals) - distance_back)
+        diff = 0
+        if len(self._generation_scores) == 1:
+            return np.abs(self._generation_scores[0])
+        for i, _ in enumerate(self._generation_individuals[target:len(self._generation_individuals) - 1]):
+            diff += np.abs(self._generation_scores[i] - self._generation_scores[i+1])
+        diff = diff/target
+        return diff
+            
 
 # test on baseball data
 
 # read in baseball data 
 current_dir = os.getcwd()
-data_folder_path = os.path.join(current_dir, 'GA-dev/genetic_algorithm/data')
+data_folder_path = os.path.join(current_dir, 'genetic_algorithm/data')
 file_path = os.path.join(data_folder_path, 'baseball.dat')
-data = pd.read_csv(file_path)
+data = pd.read_csv(file_path, delimiter=' ')
 
 import time
 start = time.time()
-genetic_algorithm(data,population_size=20, chromosome_length=28, generations=100, mutation_rate=0.01, max_features=10, 
-                      outcome_index=0, objective_function="AIC", log_outcome=True)
-time.time()-start
+print(genetic_algorithm(data,population_size=20, chromosome_length=27, generations=100, mutation_rate=0.01, max_features=10, 
+                      outcome_index=0, objective_function="AIC", log_outcome=True))
+print(time.time()-start)
 
 
 
