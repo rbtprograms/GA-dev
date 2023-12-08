@@ -175,10 +175,11 @@ def select_tournament_winners(population, winners_per_subgroup, data, outcome_in
     losers = []
     #tournament is a fitness evaluation; winners_per_subgroup is the 
     # number of allowable winners moving onto the next generation
+    
     fitness_scores = [calculate_fitness(chromosome, data, outcome_index, objective_function, log_outcome) for chromosome in population]  #weights to be used for parent selection
     #stores indexes of original popualtion, in descending order of fitness
-    sorted_indices = sorted(range(len(fitness_scores)), key=lambda k: fitness_scores[k], reverse=True)
-    
+    sorted_indices = sorted(range(len(fitness_scores)), key=lambda k: fitness_scores[k])
+
     for i in range(winners_per_subgroup):
         winners.append(population[sorted_indices[i]])
         #keep track of winners to remove from rest of breeding pool
@@ -254,9 +255,11 @@ def genetic_algorithm(data,population_size=20, chromosome_length=27, generations
                 all_losers.append(loser)
 
         #parent selection and child generation
+        
         for ind in all_winners:
             parent1 = ind
-            parent2 = all_losers.pop(random.randrange(len(all_losers))) #removes parent2 from loser list and returns selected parent2
+            ## THIS LIKELY NEEDS TO CHANGE, IT SHOULD HAVE MORE RANDOMNESS BUT WINNERS SHOULD PAIR WITH WINNERS MOST OFTEN
+            parent2 = all_winners[1:].pop(random.randrange(len(all_winners[1:]))) #removes parent2 from loser list and returns selected parent2
             child1 = crossover(parent1, parent2,population_size)
             child2 = crossover(parent1, parent2,population_size)
             child3 = crossover(parent1, parent2,population_size)
@@ -293,8 +296,8 @@ def genetic_algorithm(data,population_size=20, chromosome_length=27, generations
             None
         #elif abs(max_score_generation[g] - max_score_generation[g-1]) < 1e-15:
         #    break
-        if generation_data.check_diff_last_generations(3) < .1:
-            break
+        # if generation_data.check_diff_last_generations(3) < .1:
+        #     break
         # if g==100:
         #     break
         #check the difference across generations for an exit condition
@@ -304,10 +307,10 @@ def genetic_algorithm(data,population_size=20, chromosome_length=27, generations
     #save generation data
 
     # COMMENT THIS CODE IN TO PRINT OUT THE HIGHEST SCORING INDIVIDUAL FROM EACH GENERATION (NOT SURE IF WORKING RIGHT)
-    #generation_data.show_all_generations()
+    generation_data.show_all_generations()
     
     # COMMENT THIS CODE IN TO PLOT ALL THE AIC VALUES FROM EACH GENERATION
-    #scores_data.plot_scores()
+    scores_data.plot_scores()
 
 
 class Generation_Container:
@@ -336,7 +339,7 @@ class Generation_Container:
         for i, _ in enumerate(self._generation_individuals[target:len(self._generation_individuals) - 1]):
             diff += np.abs(self._generation_scores[i] - self._generation_scores[i+1])
         diff = diff/target
-        #print(f'{target} generations giving diff of: {diff}')
+        print(f'{target} generations giving diff of: {diff}')
         return diff
 
 class Generation_Scores:
@@ -359,7 +362,7 @@ class Generation_Scores:
             y_values.extend(values)
 
 
-        plt.scatter(x_values, y_values, s=8)
+        plt.scatter(x_values, y_values, s=6)
         plt.title('aic across generations')
         plt.xlabel('generation')
         plt.ylabel('aic')
