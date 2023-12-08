@@ -223,6 +223,7 @@ def genetic_algorithm(data,population_size=20, chromosome_length=27, generations
 
     population = initialize_population(population_size, chromosome_length, max_features)
     generation_data = Generation_Container()
+    scores_data = Generation_Scores()
     max_score_generation = []
 
     for g in range(generations): #main iteration
@@ -280,10 +281,10 @@ def genetic_algorithm(data,population_size=20, chromosome_length=27, generations
             new_population.append(child1)
 
         #gen_max_score = max(calculate_fitness(individual, data, outcome_index, objective_function, log_outcome) for individual in new_population)
-        gen_scores = [[individual,calculate_fitness(individual, data, outcome_index, objective_function, log_outcome)] for individual in population]
-        #print(gen_scores)
+        gen_scores = [[individual,calculate_fitness(individual, data, outcome_index, objective_function, log_outcome)] for individual in new_population]
+        scores_data.add_scores(gen_scores)
         gen_max_individual_data = max(gen_scores, key=lambda x: abs(x[1]))
-        #print('YEA*****', lowest_score_entry)
+
         generation_data.add_generation_data(gen_max_individual_data[1], gen_max_individual_data[0])
         #max_score_generation.append(max(calculate_fitness(individual, data, outcome_index, objective_function, log_outcome) for individual in new_population))
         
@@ -292,9 +293,8 @@ def genetic_algorithm(data,population_size=20, chromosome_length=27, generations
             None
         #elif abs(max_score_generation[g] - max_score_generation[g-1]) < 1e-15:
         #    break
-        if generation_data.check_diff_last_generations(5) < .1:
+        if generation_data.check_diff_last_generations(3) < .1:
             break
-        #print('diffs: ', generation_data.check_diff_last_generations(5))
         # if g==100:
         #     break
         #check the difference across generations for an exit condition
@@ -302,8 +302,12 @@ def genetic_algorithm(data,population_size=20, chromosome_length=27, generations
         population = new_population #non-overlapping generations
         
     #save generation data
-    #generation_data.add_generation_data([individual[1] for individual in individual_scores], [score[0] for score in individual_scores])
-    generation_data.show_all_generations()
+
+    # COMMENT THIS CODE IN TO PRINT OUT THE HIGHEST SCORING INDIVIDUAL FROM EACH GENERATION (NOT SURE IF WORKING RIGHT)
+    #generation_data.show_all_generations()
+    
+    # COMMENT THIS CODE IN TO PLOT ALL THE AIC VALUES FROM EACH GENERATION
+    #scores_data.plot_scores()
 
 
 class Generation_Container:
@@ -319,7 +323,6 @@ class Generation_Container:
         for i, _ in enumerate(self._generation_individuals):
             print(f'Generation {i+1} yielded: {self._generation_scores[i]} {self._generation_individuals[i]}')
 
-
     def check_last_generations(self, distance_back):
         target = max(0, len(self._generation_individuals) - distance_back)
         for i, _ in enumerate(self._generation_individuals[target:]):
@@ -328,25 +331,53 @@ class Generation_Container:
     def check_diff_last_generations(self, distance_back):
         target = max(0, len(self._generation_individuals) - distance_back)
         diff = 0
-        if len(self._generation_scores) == 1:
+        if len(self._generation_scores) < 5:
             return np.abs(self._generation_scores[0])
         for i, _ in enumerate(self._generation_individuals[target:len(self._generation_individuals) - 1]):
             diff += np.abs(self._generation_scores[i] - self._generation_scores[i+1])
         diff = diff/target
+        #print(f'{target} generations giving diff of: {diff}')
         return diff
-            
+
+class Generation_Scores:
+    def __init__(self):
+        self.scores = []
+    def add_scores(self, generation):
+        gen_scores = []
+        for data in generation:
+            gen_scores.append(data[1])
+        self.scores.append(gen_scores)
+    def print_scores(self):
+        print(self.scores)
+    def plot_scores(self):
+        import matplotlib.pyplot as plt
+
+        x_values = []
+        y_values = []
+        for index, values in enumerate(self.scores):
+            x_values.extend([index] * len(values))  # Repeat the index for each value in the set
+            y_values.extend(values)
+
+
+        plt.scatter(x_values, y_values, s=8)
+        plt.title('aic across generations')
+        plt.xlabel('generation')
+        plt.ylabel('aic')
+        plt.gca().invert_yaxis()
+        plt.grid(True)
+        plt.show()
 
 # test on baseball data
 
 # read in baseball data 
 current_dir = os.getcwd()
-data_folder_path = os.path.join(current_dir, 'GA-dev/genetic_algorithm/data')
+data_folder_path = os.path.join(current_dir, 'genetic_algorithm/data')
 file_path = os.path.join(data_folder_path, 'baseball.dat')
 data = pd.read_csv(file_path, delimiter=' ')
 
 import time
 start = time.time()
-print(genetic_algorithm(data,population_size=20, chromosome_length=27, generations=100, mutation_rate=0.01, max_features=10, 
+print(genetic_algorithm(data,population_size=20, chromosome_length=27, generations=100, mutation_rate=0.01, max_features=27, 
                       outcome_index=0, objective_function="AIC", log_outcome=True))
 print(time.time()-start)
 

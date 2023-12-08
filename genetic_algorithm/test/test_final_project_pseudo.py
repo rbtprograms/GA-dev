@@ -29,10 +29,10 @@ def test_rank_negatives():
 
 def test_save_generation_data():
   container = Generation_Container()
-  container.add_generation_data(45, [1,0,0,1,1])
-  container.add_generation_data(21, [1,0,0,0,0])
-  container.add_generation_data(100, [1,0,1,1,1])
-  container.add_generation_data(65, [1,1,1,1,1])
-  container.add_generation_data(11, [0,0,1,0,1])
-  container.check_last_generations(3)
+  container.add_generation_data(-375, [1,0,0,1,1])
+  container.add_generation_data(-374, [1,0,0,1,1])
+  container.add_generation_data(-373, [1,0,0,1,1])
+  container.add_generation_data(-372, [1,0,0,1,1])
+  container.add_generation_data(-371, [1,0,0,1,1])
+  print(container.check_diff_last_generations(3))
   assert type(container) == int
