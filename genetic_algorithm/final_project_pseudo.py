@@ -90,6 +90,12 @@ def calculate_fitness(chromosome, data, outcome_index, objective_function="AIC",
     Returns:
     - float: fitness value.
     """
+    assert all(bit in {0, 1} for bit in chromosome), "Chromosome must be a binary list of 0s and 1s"
+    assert isinstance(data, pd.DataFrame), "Data must be a pandas DataFrame"
+    assert isinstance(outcome_index, int) and outcome_index >= 0, "Outcome index must be a non-negative integer"
+    assert objective_function in ["AIC", "BIC", "Adjusted R-squared", "Deviance", "MSE", "Mallows CP"], \
+    "Objective function options are limited to: 'AIC', 'BIC', 'Adjusted R-squared', 'Deviance', 'MSE', 'Mallows CP.' If not from list, default calculations are AIC."
+    assert isinstance(log_outcome, bool), "log_outcome must be either True or False"
 
     if log_outcome == True:
         outcome = pd.Series(np.log(data.iloc[:, outcome_index].astype(float)))
