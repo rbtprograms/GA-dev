@@ -376,22 +376,60 @@ class Generation_Scores:
         plt.grid(True)
         plt.show()
 
-# test on baseball data
+# test on baseball data (27 predictors)
 
 # read in baseball data 
 current_dir = os.getcwd()
-data_folder_path = os.path.join(current_dir, 'genetic_algorithm/data')
+data_folder_path = os.path.join(current_dir, 'GA-dev/genetic_algorithm/data')
 file_path = os.path.join(data_folder_path, 'baseball.dat')
 data = pd.read_csv(file_path, delimiter=' ')
 
-import time
-start = time.time()
 print(genetic_algorithm(data,population_size=20, chromosome_length=27, generations=100, mutation_rate=0.01, max_features=27, 
                       outcome_index=0, objective_function="AIC", log_outcome=True))
-print(time.time()-start)
 
 
+# test on crime data (99 predictors)
 
+# read in crime data
+current_dir = os.getcwd()
+data_folder_path = os.path.join(current_dir, 'GA-dev/genetic_algorithm/data')
+file_path = os.path.join(data_folder_path, 'communities.data')
+data2 = pd.read_csv(file_path, delimiter=',')
+crime_data = data2.iloc[:, 5:] #remove some parameters
+new_header = ["population", "householdsize", "racepctblack", "racePctWhite", "racePctAsian", "racePctHisp",
+              "agePct12t21", "agePct12t29", "agePct16t24", "agePct65up", "numbUrban", "pctUrban", "medIncome",
+              "pctWWage", "pctWFarmSelf", "pctWInvInc", "pctWSocSec", "pctWPubAsst", "pctWRetire", "medFamInc",
+              "perCapInc", "whitePerCap", "blackPerCap", "indianPerCap", "AsianPerCap", "OtherPerCap", "HispPerCap",
+              "NumUnderPov", "PctPopUnderPov", "PctLess9thGrade", "PctNotHSGrad", "PctBSorMore", "PctUnemployed",
+              "PctEmploy", "PctEmplManu", "PctEmplProfServ", "PctOccupManu", "PctOccupMgmtProf", "MalePctDivorce",
+              "MalePctNevMarr", "FemalePctDiv", "TotalPctDiv", "PersPerFam", "PctFam2Par", "PctKids2Par",
+              "PctYoungKids2Par", "PctTeen2Par", "PctWorkMomYoungKids", "PctWorkMom", "NumIlleg", "PctIlleg",
+              "NumImmig", "PctImmigRecent", "PctImmigRec5", "PctImmigRec8", "PctImmigRec10", "PctRecentImmig",
+              "PctRecImmig5", "PctRecImmig8", "PctRecImmig10", "PctSpeakEnglOnly", "PctNotSpeakEnglWell",
+              "PctLargHouseFam", "PctLargHouseOccup", "PersPerOccupHous", "PersPerOwnOccHous", "PersPerRentOccHous",
+              "PctPersOwnOccup", "PctPersDenseHous", "PctHousLess3BR", "MedNumBR", "HousVacant", "PctHousOccup",
+              "PctHousOwnOcc", "PctVacantBoarded", "PctVacMore6Mos", "MedYrHousBuilt", "PctHousNoPhone",
+              "PctWOFullPlumb", "OwnOccLowQuart", "OwnOccMedVal", "OwnOccHiQuart", "RentLowQ", "RentMedian",
+              "RentHighQ", "MedRent", "MedRentPctHousInc", "MedOwnCostPctInc", "MedOwnCostPctIncNoMtg", "NumInShelters",
+              "NumStreet", "PctForeignBorn", "PctBornSameState", "PctSameHouse85", "PctSameCity85", "PctSameState85",
+              "LemasSwornFT", "LemasSwFTPerPop", "LemasSwFTFieldOps", "LemasSwFTFieldPerPop", "LemasTotalReq",
+              "LemasTotReqPerPop", "PolicReqPerOffic", "PolicPerPop", "RacialMatchCommPol", "PctPolicWhite",
+              "PctPolicBlack", "PctPolicHisp", "PctPolicAsian", "PctPolicMinor", "OfficAssgnDrugUnits",
+              "NumKindsDrugsSeiz", "PolicAveOTWorked", "LandArea", "PopDens", "PctUsePubTrans", "PolicCars",
+              "PolicOperBudg", "LemasPctPolicOnPatr", "LemasGangUnitDeploy", "LemasPctOfficDrugUn", "PolicBudgPerPop",
+              "ViolentCrimesPerPop"] #outcome is violent crimes per pop
+
+# replace with the new header
+crime_data.columns = new_header
+
+# remove columns that contain '?'
+rows_with_question_mark = crime_data[crime_data.eq('?').any(axis=1)].shape[0]
+cols_contains_question_mark = (crime_data == '?').sum()
+crime_data_clean = crime_data.loc[:, ~(crime_data == '?').any()]
+nfields = crime_data_clean.shape[1] - 1
+
+print(genetic_algorithm(crime_data_clean,population_size=20, chromosome_length=nfields, generations=100, mutation_rate=0.02, max_features=50, 
+                      outcome_index=nfields, objective_function="AIC", log_outcome=False))
 
 
 
