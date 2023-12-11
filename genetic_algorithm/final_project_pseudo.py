@@ -21,6 +21,7 @@ def initialize_population(population_size, chromosome_length, max_features):
     assert isinstance(population_size, int) and population_size > 0, "population_size must be a positive integer"
     assert isinstance(chromosome_length, int) and chromosome_length > 0, "chromosome_length must be a positive integer"
     assert isinstance(max_features, int) and max_features > 0, "max_features must be a positive integer"
+    assert max_features <= chromosome_length, "max_features must not exceed number of features in dataset"
 
     population = [generate_random_chromosome(chromosome_length, max_features) for _ in range(population_size)]
 
@@ -39,6 +40,7 @@ def adjust_chromosome(chromosome, max_features):
     """
     assert all(bit in {0, 1} for bit in chromosome), "Chromosome must be a binary list of 0s and 1s"
     assert isinstance(max_features, int) and max_features > 0, "max_features must be a positive integer"
+    assert max_features <= len(chromosome), "max_features must not exceed number of features in dataset"
 
     current_sum = sum(chromosome)
 
@@ -68,6 +70,7 @@ def generate_random_chromosome(chromosome_length, max_features):
     """
     assert isinstance(chromosome_length, int) and chromosome_length > 0, "chromosome_length must be a positive integer"
     assert isinstance(max_features, int) and max_features > 0, "max_features must be a positive integer"
+    assert max_features <= chromosome_length, "max_features must not exceed number of features in dataset"
     
     chromosome = np.random.randint(2, size=chromosome_length).tolist()
     #ensure that the new chromsome doesn't exceed the max allowable features
@@ -172,19 +175,46 @@ def calculate_rank_based_fitness(data, outcome, population, population_size, obj
 	return [(2*r)/(p*(p+1)) for r in fitness_ranks]
 
 def select_tournament_winners(population, winners_per_subgroup, data, outcome_index, objective_function="AIC", log_outcome=True):
-	# implementing tournament selection
-	# one parent selected with probability proportional to its fitness
-	# other parent selected randomly
+    """
+    Implement tournament selection. 'Winner' parent selected as highest fitness score, 
+    other parent selected randomly but proportional to fitness score (higher scores more heavily weighted).
+
+    Parameters:
+    - population (list): Subset of total population, list of chromosomes.
+    - winners_per_subgroup (int): Number of 'winning' parents per subgroup.
+    - data (pd.DataFrame): Input data with predictors.
+    - outcome_index (int): Index of outcome column (0 index).
+    - objective_function (string): Default is AIC, other options are "BIC", "Adjusted R-squared, "Deviance", "MSE", 
+    "Mallows CP".
+    - log_outcome (bool): True if the outcome variable is on the log scale, False else.
+
+
+    Returns:
+    - winners (list): list of chromosomes of top 'winners' per subgroup.
+    - losers (list): list of chromosomes of non-winners from subgroup.
+    """
 
     winners = []
     indexes_to_remove = []
     losers = []
-    #tournament is a fitness evaluation; winners_per_subgroup is the 
-    # number of allowable winners moving onto the next generation
-    
+
     fitness_scores = [calculate_fitness(chromosome, data, outcome_index, objective_function, log_outcome) for chromosome in population]  #weights to be used for parent selection
-    #stores indexes of original popualtion, in descending order of fitness
-    sorted_indices = sorted(range(len(fitness_scores)), key=lambda k: fitness_scores[k])
+   
+   #stores indexes of original popualtion, in descending/ascending order of fitness 
+   # (ascending for AIC/BIC, deviance, MSE, Mallows CP)
+    if objective_function == "BIC": 
+        sorted_indices = sorted(range(len(fitness_scores)), key=lambda k: fitness_scores[k], reverse=False)
+    elif objective_function == "Adjusted R-squared":
+        sorted_indices = sorted(range(len(fitness_scores)), key=lambda k: fitness_scores[k], reverse=True)
+    elif objective_function == "Deviance":
+        sorted_indices = sorted(range(len(fitness_scores)), key=lambda k: fitness_scores[k], reverse=False)
+    elif objective_function == "MSE":
+        sorted_indices = sorted(range(len(fitness_scores)), key=lambda k: fitness_scores[k], reverse=False)
+    elif objective_function == "Mallows CP":
+        sorted_indices = sorted(range(len(fitness_scores)), key=lambda k: fitness_scores[k], reverse=False)
+    else: #objective function is AIC by default
+        sorted_indices = sorted(range(len(fitness_scores)), key=lambda k: fitness_scores[k], reverse=False)
+
 
     for i in range(winners_per_subgroup):
         winners.append(population[sorted_indices[i]])
@@ -192,7 +222,6 @@ def select_tournament_winners(population, winners_per_subgroup, data, outcome_in
     for i in range(winners_per_subgroup, len(population)):
         indexes_to_remove.append(sorted_indices[i])
     
-
     #keeping track of losing individuals for random mating later on
     for i in indexes_to_remove:
         losers.append(population[i])
@@ -200,18 +229,46 @@ def select_tournament_winners(population, winners_per_subgroup, data, outcome_in
     return winners, losers
 
 def crossover(parent1, parent2, population_size):
+    """
+    Generates a new offspring through a crossover event between parent chromosomes.
+
+    Parameters: 
+    - parent1, parent2 (list): chromosome of parent 1/2
+    - population_size (int): The size of the population.
+
+    Returns:
+    - offspring (list): chromosome of the offspring.
+
+    """
 	#We should choose how many crossover events per offspring we want, defaulting to 1 for now
 	# produces a single offspring
 
-	recombination_points = range(population_size - 1) #can't recombine at ends of chromosomes
-	recomb_location_off1 = np.random.choice(recombination_points, replace=True)
+    recombination_points = range(population_size - 1) #can't recombine at ends of chromosomes
+    recomb_location_off1 = np.random.choice(recombination_points, replace=True)
 
-	offspring = parent1[:recomb_location_off1] + parent2[recomb_location_off1:]
-    
-	return offspring
+    offspring = parent1[:recomb_location_off1] + parent2[recomb_location_off1:]
+
+    return offspring
 
 def mutate(chromosome, mutation_rate, max_features):
-    ##This function can only be run after crossover() to ensure max number of features is not exceeded
+    """
+    Performs chromosome 'mutations' ie. changes states from 0/1 to 1/0 at a set rate. Must be 
+    run AFTER crossover() to ensure max number of features is not exceeded.
+
+    Parameters:
+    - chromosome (list): Binary representation of predictors.
+    - mutation_rate (float): rate at which mutations should be introduced, should have value between 0 and 1.
+    - max_features (int): The maximum number of features. Must be a positive integer.
+
+    Returns:
+    - new_chromosome (list): New potentially mutated chromosome.
+    
+    """
+    print(chromosome)
+    assert isinstance(mutation_rate, float) and mutation_rate >= 0 and mutation_rate <= 1, \
+    "mutation_rate must be of type(float) and must take a value between 0 and 1 (inclusive)."
+    assert isinstance(max_features, int) and max_features > 0, "max_features must be a positive integer"
+    assert max_features <= len(chromosome), "max_features must not exceed number of features in dataset"
 
     # mutation == True with probability 0.01, False otherwise
     mutation = [random.random() < mutation_rate for i in range(len(chromosome))]
@@ -219,7 +276,6 @@ def mutate(chromosome, mutation_rate, max_features):
     # '0' to '1' mutation or '1' to '0' mutation if mutation == True
     new_chromosome = [abs(chromosome[i] - 1) if mutation[i] else chromosome[i] for i in range(len(chromosome))]
 
-    #ensure chromosome doesn't exceed max_features
     #this checks for too many features gained from both crossover and mutation
     new_chromosome = adjust_chromosome(new_chromosome, max_features)
 
@@ -228,6 +284,7 @@ def mutate(chromosome, mutation_rate, max_features):
 def genetic_algorithm(data,population_size=20, chromosome_length=27, generations=100, mutation_rate=0.01, max_features=10, 
                       outcome_index=0, objective_function="AIC", log_outcome=True):
 
+    winners_per_subgroup = 1 #change later to be paramter passed by user
     population = initialize_population(population_size, chromosome_length, max_features)
     generation_data = Generation_Container()
     scores_data = Generation_Scores()
@@ -254,18 +311,74 @@ def genetic_algorithm(data,population_size=20, chromosome_length=27, generations
         all_winners = []
         all_losers = []
         for group in pop_subgroups:
-            winners, losers = select_tournament_winners(group, 1, data, outcome_index, objective_function, log_outcome) #selecting 1 winner per subgroup
+            winners, losers = select_tournament_winners(group, 
+                                                        winners_per_subgroup, 
+                                                        data, 
+                                                        outcome_index, 
+                                                        objective_function, 
+                                                        log_outcome) #selecting 1 winner per subgroup
             for winner in winners:
                 all_winners.append(winner)
             for loser in losers:
                 all_losers.append(loser)
 
         #parent selection and child generation
-        
-        for ind in all_winners:
-            parent1 = ind
-            ## THIS LIKELY NEEDS TO CHANGE, IT SHOULD HAVE MORE RANDOMNESS BUT WINNERS SHOULD PAIR WITH WINNERS MOST OFTEN
-            parent2 = all_winners[1:].pop(random.randrange(len(all_winners[1:]))) #removes parent2 from loser list and returns selected parent2
+
+        while len(all_winners) > 1:
+            parent2_winner = random.uniform(0,1) < 0.8
+            if parent2_winner: #winner mate selected
+
+                parent1_ind = random.sample(list(enumerate(all_winners)), 1)[0]
+                parent1 = parent1_ind[1]
+                all_winners.pop(parent1_ind[0])
+
+                parent2_ind = random.sample(list(enumerate(all_winners)), 1)[0]
+                parent2 = parent2_ind[1]
+                all_winners.pop(parent2_ind[0])
+
+                child1 = crossover(parent1, parent2,population_size)
+                child2 = crossover(parent1, parent2,population_size)
+                child3 = crossover(parent1, parent2,population_size)
+
+                #mutation
+                child1 = mutate(child1, mutation_rate, max_features)
+                child2 = mutate(child2, mutation_rate, max_features)
+                child3 = mutate(child3, mutation_rate, max_features)
+
+                new_population.append(child1)
+                new_population.append(child2)
+                new_population.append(child3)
+
+
+            else: #loser mate selected
+                parent1_ind = random.sample(list(enumerate(all_winners)), 1)[0]
+                parent1 = parent1_ind[1]
+                all_winners.pop(parent1_ind[0])
+
+                parent2_ind = random.sample(list(enumerate(all_losers)), 1)[0]
+                parent2 = parent2_ind[1]
+                all_losers.pop(parent2_ind[0])
+
+                child1 = crossover(parent1, parent2,population_size)
+                child2 = crossover(parent1, parent2,population_size)
+                child3 = crossover(parent1, parent2,population_size)
+
+                #mutation
+                child1 = mutate(child1, mutation_rate, max_features)
+                child2 = mutate(child2, mutation_rate, max_features)
+                child3 = mutate(child3, mutation_rate, max_features)
+
+                new_population.append(child1)
+                new_population.append(child2)
+                new_population.append(child3)
+
+        #now all_winners has either 0 or 1 elements
+        if len(all_winners) > 0: #1 winner left
+            parent1 = all_winners[0]
+            parent2_ind = random.sample(list(enumerate(all_losers)), 1)[0]
+            parent2 = parent2_ind[1]
+            all_losers.pop(parent2_ind[0])
+
             child1 = crossover(parent1, parent2,population_size)
             child2 = crossover(parent1, parent2,population_size)
             child3 = crossover(parent1, parent2,population_size)
@@ -380,7 +493,9 @@ class Generation_Scores:
 
 # read in baseball data 
 current_dir = os.getcwd()
-data_folder_path = os.path.join(current_dir, 'GA-dev/genetic_algorithm/data')
+# data_folder_path = os.path.join(current_dir, 'GA-dev/genetic_algorithm/data')
+data_folder_path = '/Users/kaileyferger/STAT243/GA-dev/genetic_algorithm/data'
+
 file_path = os.path.join(data_folder_path, 'baseball.dat')
 data = pd.read_csv(file_path, delimiter=' ')
 
