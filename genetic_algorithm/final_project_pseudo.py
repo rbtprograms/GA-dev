@@ -261,17 +261,17 @@ def mutate(chromosome, mutation_rate, max_features):
 
     return new_chromosome
 
-def select(data,population_size=20, chromosome_length=27, generations=100, mutation_rate=0.01, max_features=10, 
+def select(data,population_size, chromosome_length, generations=100, mutation_rate=0.01, max_features, 
                       outcome_index, objective_function="AIC", log_outcome=True, regression_type="OLS"):
-        """
+    """
     Execute a genetic algorithm for feature selection and model optimization.
 
     Parameters:
     - data (pd.DataFrame): Clean data set with float/int variables, no missing values, sufficient dimensions.
     - population_size (int): The size of the population. 
     - chromosome_length (int): The length of each chromosome. 
-    - generations (int): The number of generations to run the algorithm. 
-    - mutation_rate (float): The rate at which mutations should be introduced. Should be a value between 0 and 1.
+    - generations (int): The number of generations to run the algorithm. Default is 100.
+    - mutation_rate (float): The rate at which mutations should be introduced. Should be a value between 0 and 1. Default is 0.01
     - max_features (int): The maximum number of features. Must be a positive integer.
     - outcome_index (int): Index of the outcome column (0 index). 
     - objective_function (str): The objective function to optimize. Options are "AIC", "BIC", "Adjusted R-squared",
