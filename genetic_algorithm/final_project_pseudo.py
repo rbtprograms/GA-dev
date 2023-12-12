@@ -1,6 +1,6 @@
 # packages needed
 import numpy as np
-from sklearn.linear_model import LinearRegression
+from sklearn.linear_model import LinearRegression, Lasso, Ridge
 import statsmodels.api as sm
 import pandas as pd
 import os
@@ -21,6 +21,7 @@ def initialize_population(population_size, chromosome_length, max_features):
     assert isinstance(population_size, int) and population_size > 0, "population_size must be a positive integer"
     assert isinstance(chromosome_length, int) and chromosome_length > 0, "chromosome_length must be a positive integer"
     assert isinstance(max_features, int) and max_features > 0, "max_features must be a positive integer"
+    assert max_features <= chromosome_length, "max_features must not exceed number of features in dataset"
 
     population = [generate_random_chromosome(chromosome_length, max_features) for _ in range(population_size)]
 
@@ -39,6 +40,7 @@ def adjust_chromosome(chromosome, max_features):
     """
     assert all(bit in {0, 1} for bit in chromosome), "Chromosome must be a binary list of 0s and 1s"
     assert isinstance(max_features, int) and max_features > 0, "max_features must be a positive integer"
+    assert max_features <= len(chromosome), "max_features must not exceed number of features in dataset"
 
     current_sum = sum(chromosome)
 
@@ -68,6 +70,7 @@ def generate_random_chromosome(chromosome_length, max_features):
     """
     assert isinstance(chromosome_length, int) and chromosome_length > 0, "chromosome_length must be a positive integer"
     assert isinstance(max_features, int) and max_features > 0, "max_features must be a positive integer"
+    assert max_features <= chromosome_length, "max_features must not exceed number of features in dataset"
     
     chromosome = np.random.randint(2, size=chromosome_length).tolist()
     #ensure that the new chromsome doesn't exceed the max allowable features
@@ -75,7 +78,7 @@ def generate_random_chromosome(chromosome_length, max_features):
 
     return chromosome
 
-def calculate_fitness(chromosome, data, outcome_index, objective_function="AIC", log_outcome=True):
+def calculate_fitness(chromosome, data, outcome_index, objective_function="AIC", log_outcome=True, regression_type="OLS"):
     """
     Calculate the fitness of a chromosome.
 
@@ -83,19 +86,25 @@ def calculate_fitness(chromosome, data, outcome_index, objective_function="AIC",
     - chromosome (list of bool): Binary representation of predictors.
     - data (pd.DataFrame): Input data with predictors.
     - outcome_index (int): Index of outcome column (0 index).
-    - objective_function (str): Default is AIC, other options are "BIC", "Adjusted R-squared, "Deviance", "MSE", 
+    - objective_function (str): Default is AIC, other options are "BIC", "Adjusted R-squared, "MSE", 
     "Mallows CP". 
     - log_outcome (bool): True if the outcome variable is on the log scale, False else.
+    - regression_type (str): Default is OLS, other options are "Lasso" and "Rigde".
 
     Returns:
     - float: fitness value.
     """
     assert all(bit in {0, 1} for bit in chromosome), "Chromosome must be a binary list of 0s and 1s"
     assert isinstance(data, pd.DataFrame), "Data must be a pandas DataFrame"
+    assert data.shape[1] >= 2, "Data must have at least 2 columns."
+    assert data.shape[0] >= 20, "Data must have at least 20 rows."
+    assert not data.isnull().any().any(), "Data must not contain missing values."
+    assert data.applymap(lambda x: isinstance(x, (int, float))).all().all(), "Data must contain only floats or integers."
     assert isinstance(outcome_index, int) and outcome_index >= 0, "Outcome index must be a non-negative integer"
-    assert objective_function in ["AIC", "BIC", "Adjusted R-squared", "Deviance", "MSE", "Mallows CP"], \
-    "Objective function options are limited to: 'AIC', 'BIC', 'Adjusted R-squared', 'Deviance', 'MSE', 'Mallows CP.' If not from list, default calculations are AIC."
+    assert objective_function in ["AIC", "BIC", "Adjusted R-squared", "MSE", "Mallows CP"], \
+    "Objective function options are limited to: 'AIC', 'BIC', 'Adjusted R-squared', 'MSE', 'Mallows CP.' If not from list, default calculations are AIC."
     assert isinstance(log_outcome, bool), "log_outcome must be either True or False"
+    assert regression_type in ["OLS","Ridge","Lasso"], "Regression type options are limited to: 'OLS','Ridge','Lasso'. If not from list, default calculations are OLS."
 
     if log_outcome == True:
         outcome = pd.Series(np.log(data.iloc[:, outcome_index].astype(float)))
@@ -118,7 +127,12 @@ def calculate_fitness(chromosome, data, outcome_index, objective_function="AIC",
     predictors_array = np.asarray(selected_predictors.astype(float))
 
     # Fit linear regression model
-    model = sm.OLS(outcome_array, predictors_array).fit()
+    if regression_type == "Lasso":
+        model  = Lasso(alpha=1).fit(predictors_array, outcome_array)
+    elif regression_type == "Ridge":
+        model  = Ridge(alpha=1).fit(predictors_array, outcome_array)
+    else:
+        model = sm.OLS(outcome_array, predictors_array).fit()
 
     # Calculate objective function inputs
     rss = model.ssr
@@ -134,8 +148,6 @@ def calculate_fitness(chromosome, data, outcome_index, objective_function="AIC",
     elif objective_function == "Adjusted R-squared":
         r_squared = 1 - (rss / tss)
         return 1 - (1 - (r_squared)) * (n - 1) / (n - s - 1)
-    elif objective_function == "Deviance":
-        return 2 * model.llf
     elif objective_function == "MSE":
         return mse
     elif objective_function == "Mallows CP":
@@ -144,74 +156,99 @@ def calculate_fitness(chromosome, data, outcome_index, objective_function="AIC",
         # default is AIC
         return n * np.log(rss / n) + 2 * k
 
-# ignore this function for now
-def rank(scores):
+def select_tournament_winners(population, data, outcome_index, objective_function="AIC", log_outcome=True):
     """
-    Return the numeric ranking based on the highest absolute value.
-    """
-    sorted_indices = sorted(range(len(scores)), key=lambda k: abs(scores[k]))
-    return [i + 1 for i in sorted_indices]
-
-# ignore this function as well
-def calculate_rank_based_fitness(data, outcome, population, population_size, objective_function="AIC"):
-	"""
-    Calculate rank-based fitness scores for a population based on objective function.
+    Implement tournament selection. 'Winner' parent selected as highest fitness score, 
+    other parent selected randomly but proportional to fitness score (higher scores more heavily weighted).
 
     Parameters:
+    - population (list): Subset of total population, list of chromosomes.
     - data (pd.DataFrame): Input data with predictors.
-    - outcome (pd.Series): Outcome variable.
-    - population_size (int): The size of the population.
-    - population (list): List of chromosomes
+    - outcome_index (int): Index of outcome column (0 index).
+    - objective_function (string): Default is AIC, other options are "BIC", "Adjusted R-squared, "Deviance", "MSE", 
+    "Mallows CP".
+    - log_outcome (bool): True if the outcome variable is on the log scale, False else.
+
 
     Returns:
-    - list of float: Rank-based fitness scores for each chromosome in the population.
+    - winner (list): chromosome of top 'winner' per subgroup.
+    - losers (list): list of chromosomes of non-winners from subgroup.
     """
-	fitness_scores = [calculate_fitness(chromosome, data, outcome, objective_function="AIC") for chromosome in population]
-	fitness_ranks = rank(fitness_scores) 
-	p = population_size
-	return [(2*r)/(p*(p+1)) for r in fitness_ranks]
-
-def select_tournament_winners(population, winners_per_subgroup, data, outcome_index, objective_function="AIC", log_outcome=True):
-	# implementing tournament selection
-	# one parent selected with probability proportional to its fitness
-	# other parent selected randomly
 
     winners = []
     indexes_to_remove = []
     losers = []
-    #tournament is a fitness evaluation; winners_per_subgroup is the 
-    # number of allowable winners moving onto the next generation
-    
-    fitness_scores = [calculate_fitness(chromosome, data, outcome_index, objective_function, log_outcome) for chromosome in population]  #weights to be used for parent selection
-    #stores indexes of original popualtion, in descending order of fitness
-    sorted_indices = sorted(range(len(fitness_scores)), key=lambda k: fitness_scores[k])
 
-    for i in range(winners_per_subgroup):
-        winners.append(population[sorted_indices[i]])
+    fitness_scores = [calculate_fitness(chromosome, data, outcome_index, objective_function, log_outcome) for chromosome in population]  #weights to be used for parent selection
+   
+   #stores indexes of original popualtion, in descending/ascending order of fitness 
+   # (ascending for AIC/BIC, deviance, MSE, Mallows CP)
+    if objective_function == "BIC": 
+        sorted_indices = sorted(range(len(fitness_scores)), key=lambda k: fitness_scores[k], reverse=False)
+    elif objective_function == "Adjusted R-squared":
+        sorted_indices = sorted(range(len(fitness_scores)), key=lambda k: fitness_scores[k], reverse=True)
+    elif objective_function == "Deviance":
+        sorted_indices = sorted(range(len(fitness_scores)), key=lambda k: fitness_scores[k], reverse=False)
+    elif objective_function == "MSE":
+        sorted_indices = sorted(range(len(fitness_scores)), key=lambda k: fitness_scores[k], reverse=False)
+    elif objective_function == "Mallows CP":
+        sorted_indices = sorted(range(len(fitness_scores)), key=lambda k: fitness_scores[k], reverse=False)
+    else: #objective function is AIC by default
+        sorted_indices = sorted(range(len(fitness_scores)), key=lambda k: fitness_scores[k], reverse=False)
+
+
+    winner = population[sorted_indices[0]] #one winner per subgroup
         #keep track of winners to remove from rest of breeding pool
-    for i in range(winners_per_subgroup, len(population)):
+    for i in range(1, len(population)):
         indexes_to_remove.append(sorted_indices[i])
     
-
     #keeping track of losing individuals for random mating later on
     for i in indexes_to_remove:
         losers.append(population[i])
 
-    return winners, losers
+    return winner, losers
 
 def crossover(parent1, parent2, population_size):
+    """
+    Generates a new offspring through a crossover event between parent chromosomes.
+
+    Parameters: 
+    - parent1, parent2 (list): chromosome of parent 1/2
+    - population_size (int): The size of the population.
+
+    Returns:
+    - offspring (list): chromosome of the offspring.
+
+    """
 	#We should choose how many crossover events per offspring we want, defaulting to 1 for now
 	# produces a single offspring
 
-	recombination_points = range(population_size - 1) #can't recombine at ends of chromosomes
-	recomb_location_off1 = np.random.choice(recombination_points, replace=True)
+    recombination_points = range(population_size - 1) #can't recombine at ends of chromosomes
+    recomb_location_off1 = np.random.choice(recombination_points, replace=True)
 
-	offspring = parent1[:recomb_location_off1] + parent2[recomb_location_off1:]
-    
-	return offspring
+    offspring = parent1[:recomb_location_off1] + parent2[recomb_location_off1:]
+
+    return offspring
 
 def mutate(chromosome, mutation_rate, max_features):
-    ##This function can only be run after crossover() to ensure max number of features is not exceeded
+    """
+    Performs chromosome 'mutations' ie. changes states from 0/1 to 1/0 at a set rate. Must be 
+    run AFTER crossover() to ensure max number of features is not exceeded.
+
+    Parameters:
+    - chromosome (list): Binary representation of predictors.
+    - mutation_rate (float): rate at which mutations should be introduced, should have value between 0 and 1.
+    - max_features (int): The maximum number of features. Must be a positive integer.
+
+    Returns:
+    - new_chromosome (list): New potentially mutated chromosome.
+    
+    """
+    print(chromosome)
+    assert isinstance(mutation_rate, float) and mutation_rate >= 0 and mutation_rate <= 1, \
+    "mutation_rate must be of type(float) and must take a value between 0 and 1 (inclusive)."
+    assert isinstance(max_features, int) and max_features > 0, "max_features must be a positive integer"
+    assert max_features <= len(chromosome), "max_features must not exceed number of features in dataset"
 
     # mutation == True with probability 0.01, False otherwise
     mutation = [random.random() < mutation_rate for i in range(len(chromosome))]
@@ -219,26 +256,53 @@ def mutate(chromosome, mutation_rate, max_features):
     # '0' to '1' mutation or '1' to '0' mutation if mutation == True
     new_chromosome = [abs(chromosome[i] - 1) if mutation[i] else chromosome[i] for i in range(len(chromosome))]
 
-    #ensure chromosome doesn't exceed max_features
     #this checks for too many features gained from both crossover and mutation
     new_chromosome = adjust_chromosome(new_chromosome, max_features)
 
     return new_chromosome
 
-def genetic_algorithm(data,population_size=20, chromosome_length=27, generations=100, mutation_rate=0.01, max_features=10, 
-                      outcome_index=0, objective_function="AIC", log_outcome=True):
+def select(data,population_size=20, chromosome_length, generations=100, num_sets=5, mutation_rate=0.01, max_features, 
+                      outcome_index, objective_function="AIC", log_outcome=True, regression_type="OLS"):
+    """
+    Execute a genetic algorithm for feature selection and model optimization.
 
+    Parameters:
+    - data (pd.DataFrame): Clean data set with float/int variables, no missing values, sufficient dimensions.
+    - population_size (int): The size of the population. Default is 20.
+    - chromosome_length (int): The length of each chromosome. 
+    - generations (int): The number of generations to run the algorithm. Default is 100.
+    - num_sets (int): The number of subgroups(winners).
+    - mutation_rate (float): The rate at which mutations should be introduced. Should be a value between 0 and 1. Default is 0.01.
+    - max_features (int): The maximum number of features. Must be a positive integer.
+    - outcome_index (int): Index of the outcome column (0 index). 
+    - objective_function (str): The objective function to optimize. Options are "AIC", "BIC", "Adjusted R-squared",
+                               "MSE", "Mallows CP". Default is "AIC".
+    - log_outcome (bool): True if the outcome variable is on the log scale, False otherwise. Default is True.
+    - regression_type (str): The type of regression model. Options are "OLS", "Ridge", "Lasso". Default is "OLS".
+
+    Returns:
+    - None: The function performs the genetic algorithm for feature selection and model optimization,
+            and prints the highest-scoring individual from each generation. It also plots AIC values
+            from each generation.
+
+    Example:
+    ```python
+    select(data=my_data, population_size=20, chromosome_length=15, generations=50, mutation_rate=0.02, max_features=8, outcome_index=0)
+    ```
+    """
+    
     population = initialize_population(population_size, chromosome_length, max_features)
     generation_data = Generation_Container()
     scores_data = Generation_Scores()
-    max_score_generation = []
+
+    assert population_size % num_sets == 0, "Number of subgroups must be a multiple of population size"
+    assert num_sets <= 0.25*population_size, "Number of subgroups (winners) cannot exceed 0.25 * population size"
 
     for g in range(generations): #main iteration
         
         new_population = []
         pop_subgroups = []
-        set_size = 5 #arbitrary starting value 
-        num_sets = len(population) / set_size
+        set_size = int(len(population) / num_sets)
         population_copy = population[:] #make a copy to keep track of removed individuals
 
         #random population subgroups for tournament selection
@@ -254,18 +318,72 @@ def genetic_algorithm(data,population_size=20, chromosome_length=27, generations
         all_winners = []
         all_losers = []
         for group in pop_subgroups:
-            winners, losers = select_tournament_winners(group, 1, data, outcome_index, objective_function, log_outcome) #selecting 1 winner per subgroup
-            for winner in winners:
-                all_winners.append(winner)
+            winner, losers = select_tournament_winners(group, 
+                                                        data, 
+                                                        outcome_index, 
+                                                        objective_function, 
+                                                        log_outcome) #selecting 1 winner per subgroup
+            all_winners.append(winner)
             for loser in losers:
                 all_losers.append(loser)
 
         #parent selection and child generation
-        
-        for ind in all_winners:
-            parent1 = ind
-            ## THIS LIKELY NEEDS TO CHANGE, IT SHOULD HAVE MORE RANDOMNESS BUT WINNERS SHOULD PAIR WITH WINNERS MOST OFTEN
-            parent2 = all_winners[1:].pop(random.randrange(len(all_winners[1:]))) #removes parent2 from loser list and returns selected parent2
+
+        while len(all_winners) > 1:
+            parent2_winner = random.uniform(0,1) < 0.8
+            if parent2_winner: #winner mate selected
+
+                parent1_ind = random.sample(list(enumerate(all_winners)), 1)[0]
+                parent1 = parent1_ind[1]
+                all_winners.pop(parent1_ind[0])
+
+                parent2_ind = random.sample(list(enumerate(all_winners)), 1)[0]
+                parent2 = parent2_ind[1]
+                all_winners.pop(parent2_ind[0])
+
+                child1 = crossover(parent1, parent2,population_size)
+                child2 = crossover(parent1, parent2,population_size)
+                child3 = crossover(parent1, parent2,population_size)
+
+                #mutation
+                child1 = mutate(child1, mutation_rate, max_features)
+                child2 = mutate(child2, mutation_rate, max_features)
+                child3 = mutate(child3, mutation_rate, max_features)
+
+                new_population.append(child1)
+                new_population.append(child2)
+                new_population.append(child3)
+
+
+            else: #loser mate selected
+                parent1_ind = random.sample(list(enumerate(all_winners)), 1)[0]
+                parent1 = parent1_ind[1]
+                all_winners.pop(parent1_ind[0])
+
+                parent2_ind = random.sample(list(enumerate(all_losers)), 1)[0]
+                parent2 = parent2_ind[1]
+                all_losers.pop(parent2_ind[0])
+
+                child1 = crossover(parent1, parent2,population_size)
+                child2 = crossover(parent1, parent2,population_size)
+                child3 = crossover(parent1, parent2,population_size)
+
+                #mutation
+                child1 = mutate(child1, mutation_rate, max_features)
+                child2 = mutate(child2, mutation_rate, max_features)
+                child3 = mutate(child3, mutation_rate, max_features)
+
+                new_population.append(child1)
+                new_population.append(child2)
+                new_population.append(child3)
+
+        #now all_winners has either 0 or 1 elements
+        if len(all_winners) > 0: #1 winner left
+            parent1 = all_winners[0]
+            parent2_ind = random.sample(list(enumerate(all_losers)), 1)[0]
+            parent2 = parent2_ind[1]
+            all_losers.pop(parent2_ind[0])
+
             child1 = crossover(parent1, parent2,population_size)
             child2 = crossover(parent1, parent2,population_size)
             child3 = crossover(parent1, parent2,population_size)
@@ -289,13 +407,11 @@ def genetic_algorithm(data,population_size=20, chromosome_length=27, generations
             child1 = mutate(child1, mutation_rate, max_features)
             new_population.append(child1)
 
-        #gen_max_score = max(calculate_fitness(individual, data, outcome_index, objective_function, log_outcome) for individual in new_population)
-        gen_scores = [[individual,calculate_fitness(individual, data, outcome_index, objective_function, log_outcome)] for individual in new_population]
+        gen_scores = [[individual,calculate_fitness(individual, data, outcome_index, objective_function, log_outcome, regression_type)] for individual in new_population]
         scores_data.add_scores(gen_scores)
         gen_max_individual_data = max(gen_scores, key=lambda x: abs(x[1]))
 
         generation_data.add_generation_data(gen_max_individual_data[1], gen_max_individual_data[0])
-        #max_score_generation.append(max(calculate_fitness(individual, data, outcome_index, objective_function, log_outcome) for individual in new_population))
         
         # terminate if the max fitness score in a generation converges
         if g == 0:
@@ -369,9 +485,9 @@ class Generation_Scores:
 
 
         plt.scatter(x_values, y_values, s=6)
-        plt.title('aic across generations')
+        plt.title('aic across generations') #change this to reflect user-inputted objective function
         plt.xlabel('generation')
-        plt.ylabel('aic')
+        plt.ylabel('aic') #change this to reflect user-inputted objective function
         plt.gca().invert_yaxis()
         plt.grid(True)
         plt.show()
@@ -430,8 +546,8 @@ cols_contains_question_mark = (crime_data == '?').sum()
 crime_data_clean = crime_data.loc[:, ~(crime_data == '?').any()]
 nfields = crime_data_clean.shape[1] - 1
 
-print(genetic_algorithm(crime_data_clean,population_size=20, chromosome_length=nfields, generations=100, mutation_rate=0.02, max_features=50, 
-                      outcome_index=nfields, objective_function="AIC", log_outcome=False))
+print(select(crime_data_clean,population_size=20, chromosome_length=nfields, generations=100, num_sets=5, mutation_rate=0.02, max_features=50, 
+                      outcome_index=nfields, objective_function="AIC", log_outcome=False, regression_type="OLS"))
 
 
 
