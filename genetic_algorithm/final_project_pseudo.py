@@ -1,6 +1,6 @@
 # packages needed
 import numpy as np
-from sklearn.linear_model import LinearRegression
+from sklearn.linear_model import LinearRegression, Lasso, Ridge
 import statsmodels.api as sm
 import pandas as pd
 import os
@@ -122,6 +122,13 @@ def calculate_fitness(chromosome, data, outcome_index, objective_function="AIC",
 
     # Fit linear regression model
     model = sm.OLS(outcome_array, predictors_array).fit()
+    # Lasso regression
+lasso_model_sklearn = Lasso(alpha=1)
+lasso_model_sklearn.fit(predictors_array, outcome_array)
+
+# Ridge regression
+ridge_model_sklearn = Ridge(alpha=1)
+ridge_model_sklearn.fit(predictors_array, outcome_array)
 
     # Calculate objective function inputs
     rss = model.ssr
@@ -288,7 +295,6 @@ def genetic_algorithm(data,population_size=20, chromosome_length=27, generations
     population = initialize_population(population_size, chromosome_length, max_features)
     generation_data = Generation_Container()
     scores_data = Generation_Scores()
-    max_score_generation = []
 
     for g in range(generations): #main iteration
         
