@@ -156,23 +156,22 @@ def calculate_fitness(chromosome, data, outcome_index, objective_function="AIC",
         # default is AIC
         return n * np.log(rss / n) + 2 * k
 
-def select_tournament_winners(population, winners_per_subgroup, data, outcome_index, objective_function="AIC", log_outcome=True, regression_type="OLS"):
+def select_tournament_winners(population, data, outcome_index, objective_function="AIC", log_outcome=True):
     """
     Implement tournament selection. 'Winner' parent selected as highest fitness score, 
     other parent selected randomly but proportional to fitness score (higher scores more heavily weighted).
 
     Parameters:
     - population (list): Subset of total population, list of chromosomes.
-    - winners_per_subgroup (int): Number of 'winning' parents per subgroup.
     - data (pd.DataFrame): Input data with predictors.
     - outcome_index (int): Index of outcome column (0 index).
-    - objective_function (string): Default is AIC, other options are "BIC", "Adjusted R-squared, "MSE", 
+    - objective_function (string): Default is AIC, other options are "BIC", "Adjusted R-squared, "Deviance", "MSE", 
     "Mallows CP".
     - log_outcome (bool): True if the outcome variable is on the log scale, False else.
 
 
     Returns:
-    - winners (list): list of chromosomes of top 'winners' per subgroup.
+    - winner (list): chromosome of top 'winner' per subgroup.
     - losers (list): list of chromosomes of non-winners from subgroup.
     """
 
@@ -180,14 +179,16 @@ def select_tournament_winners(population, winners_per_subgroup, data, outcome_in
     indexes_to_remove = []
     losers = []
 
-    fitness_scores = [calculate_fitness(chromosome, data, outcome_index, objective_function, log_outcome, regression_type) for chromosome in population]  #weights to be used for parent selection
+    fitness_scores = [calculate_fitness(chromosome, data, outcome_index, objective_function, log_outcome) for chromosome in population]  #weights to be used for parent selection
    
    #stores indexes of original popualtion, in descending/ascending order of fitness 
-   # (ascending for AIC/BIC, MSE, Mallows CP)
+   # (ascending for AIC/BIC, deviance, MSE, Mallows CP)
     if objective_function == "BIC": 
         sorted_indices = sorted(range(len(fitness_scores)), key=lambda k: fitness_scores[k], reverse=False)
     elif objective_function == "Adjusted R-squared":
         sorted_indices = sorted(range(len(fitness_scores)), key=lambda k: fitness_scores[k], reverse=True)
+    elif objective_function == "Deviance":
+        sorted_indices = sorted(range(len(fitness_scores)), key=lambda k: fitness_scores[k], reverse=False)
     elif objective_function == "MSE":
         sorted_indices = sorted(range(len(fitness_scores)), key=lambda k: fitness_scores[k], reverse=False)
     elif objective_function == "Mallows CP":
@@ -196,17 +197,16 @@ def select_tournament_winners(population, winners_per_subgroup, data, outcome_in
         sorted_indices = sorted(range(len(fitness_scores)), key=lambda k: fitness_scores[k], reverse=False)
 
 
-    for i in range(winners_per_subgroup):
-        winners.append(population[sorted_indices[i]])
+    winner = population[sorted_indices[0]] #one winner per subgroup
         #keep track of winners to remove from rest of breeding pool
-    for i in range(winners_per_subgroup, len(population)):
+    for i in range(1, len(population)):
         indexes_to_remove.append(sorted_indices[i])
     
     #keeping track of losing individuals for random mating later on
     for i in indexes_to_remove:
         losers.append(population[i])
 
-    return winners, losers
+    return winner, losers
 
 def crossover(parent1, parent2, population_size):
     """
@@ -261,17 +261,17 @@ def mutate(chromosome, mutation_rate, max_features):
 
     return new_chromosome
 
-def select(data,population_size, chromosome_length, generations=100, mutation_rate=0.01, max_features, 
+def select(data,population_size=20, chromosome_length=27, generations=100, num_sets=5, mutation_rate=0.01, max_features=10, 
                       outcome_index, objective_function="AIC", log_outcome=True, regression_type="OLS"):
-    """
+        """
     Execute a genetic algorithm for feature selection and model optimization.
 
     Parameters:
     - data (pd.DataFrame): Clean data set with float/int variables, no missing values, sufficient dimensions.
     - population_size (int): The size of the population. 
     - chromosome_length (int): The length of each chromosome. 
-    - generations (int): The number of generations to run the algorithm. Default is 100.
-    - mutation_rate (float): The rate at which mutations should be introduced. Should be a value between 0 and 1. Default is 0.01
+    - generations (int): The number of generations to run the algorithm. 
+    - mutation_rate (float): The rate at which mutations should be introduced. Should be a value between 0 and 1.
     - max_features (int): The maximum number of features. Must be a positive integer.
     - outcome_index (int): Index of the outcome column (0 index). 
     - objective_function (str): The objective function to optimize. Options are "AIC", "BIC", "Adjusted R-squared",
@@ -290,17 +290,18 @@ def select(data,population_size, chromosome_length, generations=100, mutation_ra
     ```
     """
     
-    winners_per_subgroup = 1 #change later to be paramter passed by user
     population = initialize_population(population_size, chromosome_length, max_features)
     generation_data = Generation_Container()
     scores_data = Generation_Scores()
+    max_score_generation = []
+    assert population_size % num_sets == 0, "Number of subgroups must be a multiple of population size"
+    assert num_sets <= 0.25*population_size, "Number of subgroups (winners) cannot exceed 0.25 * population size"
 
     for g in range(generations): #main iteration
         
         new_population = []
         pop_subgroups = []
-        set_size = 5 #arbitrary starting value 
-        num_sets = len(population) / set_size
+        set_size = int(len(population) / num_sets)
         population_copy = population[:] #make a copy to keep track of removed individuals
 
         #random population subgroups for tournament selection
@@ -316,15 +317,12 @@ def select(data,population_size, chromosome_length, generations=100, mutation_ra
         all_winners = []
         all_losers = []
         for group in pop_subgroups:
-            winners, losers = select_tournament_winners(group, 
-                                                        winners_per_subgroup, 
+            winner, losers = select_tournament_winners(group, 
                                                         data, 
                                                         outcome_index, 
                                                         objective_function, 
-                                                        log_outcome, 
-                                                        regression_type) #selecting 1 winner per subgroup
-            for winner in winners:
-                all_winners.append(winner)
+                                                        log_outcome) #selecting 1 winner per subgroup
+            all_winners.append(winner)
             for loser in losers:
                 all_losers.append(loser)
 
@@ -486,9 +484,9 @@ class Generation_Scores:
 
 
         plt.scatter(x_values, y_values, s=6)
-        plt.title('aic across generations')
+        plt.title('aic across generations') #change this to reflect user-inputted objective function
         plt.xlabel('generation')
-        plt.ylabel('aic')
+        plt.ylabel('aic') #change this to reflect user-inputted objective function
         plt.gca().invert_yaxis()
         plt.grid(True)
         plt.show()
@@ -503,7 +501,7 @@ data_folder_path = '/Users/kaileyferger/STAT243/GA-dev/genetic_algorithm/data'
 file_path = os.path.join(data_folder_path, 'baseball.dat')
 data = pd.read_csv(file_path, delimiter=' ')
 
-print(select(data,population_size=20, chromosome_length=27, generations=100, mutation_rate=0.01, max_features=27, 
+print(select(data,population_size=20, chromosome_length=27, generations=100, num_sets=5, mutation_rate=0.01, max_features=27, 
                       outcome_index=0, objective_function="AIC", log_outcome=True, regression_type="OLS"))
 
 
@@ -547,7 +545,7 @@ cols_contains_question_mark = (crime_data == '?').sum()
 crime_data_clean = crime_data.loc[:, ~(crime_data == '?').any()]
 nfields = crime_data_clean.shape[1] - 1
 
-print(select(crime_data_clean,population_size=20, chromosome_length=nfields, generations=100, mutation_rate=0.02, max_features=50, 
+print(select(crime_data_clean,population_size=20, chromosome_length=nfields, generations=100, num_sets=5, mutation_rate=0.02, max_features=50, 
                       outcome_index=nfields, objective_function="AIC", log_outcome=False, regression_type="OLS"))
 
 
