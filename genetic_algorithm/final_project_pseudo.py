@@ -302,8 +302,8 @@ def genetic_algorithm(data,population_size=20, chromosome_length=27, generations
             None
         #elif abs(max_score_generation[g] - max_score_generation[g-1]) < 1e-15:
         #    break
-        # if generation_data.check_diff_last_generations(3) < .1:
-        #     break
+        if generation_data.check_diff_last_generations(3) < .00001:
+            break
         # if g==100:
         #     break
         #check the difference across generations for an exit condition
@@ -379,20 +379,22 @@ class Generation_Scores:
 # test on baseball data (27 predictors)
 
 # read in baseball data 
-current_dir = os.getcwd()
-data_folder_path = os.path.join(current_dir, 'GA-dev/genetic_algorithm/data')
-file_path = os.path.join(data_folder_path, 'baseball.dat')
-data = pd.read_csv(file_path, delimiter=' ')
+# current_dir = os.getcwd()
+# data_folder_path = os.path.join(current_dir, 'GA-dev/genetic_algorithm/data')
+# file_path = os.path.join(data_folder_path, 'baseball.dat')
+# data = pd.read_csv(file_path, delimiter=' ')
 
-print(genetic_algorithm(data,population_size=20, chromosome_length=27, generations=100, mutation_rate=0.01, max_features=27, 
-                      outcome_index=0, objective_function="AIC", log_outcome=True))
+# print(genetic_algorithm(data,population_size=20, chromosome_length=27, generations=100, mutation_rate=0.01, max_features=27, 
+#                       outcome_index=0, objective_function="AIC", log_outcome=True))
 
 
 # test on crime data (99 predictors)
 
 # read in crime data
 current_dir = os.getcwd()
-data_folder_path = os.path.join(current_dir, 'GA-dev/genetic_algorithm/data')
+#only bobbys computer needs GA-dev to be dropped
+data_folder_path = os.path.join(current_dir, 'genetic_algorithm/data')
+# data_folder_path = os.path.join(current_dir, 'GA-dev/genetic_algorithm/data')
 file_path = os.path.join(data_folder_path, 'communities.data')
 data2 = pd.read_csv(file_path, delimiter=',')
 crime_data = data2.iloc[:, 5:] #remove some parameters
