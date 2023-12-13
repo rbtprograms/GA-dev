@@ -10,7 +10,7 @@ class Generation_Scores:
         self.scores.append(gen_scores)
     def print_scores(self):
         print(self.scores)
-    def plot_scores(self, path):
+    def plot_scores(self, path, objective_function):
         x_values = []
         y_values = []
         for index, values in enumerate(self.scores):
@@ -19,9 +19,9 @@ class Generation_Scores:
 
 
         plt.scatter(x_values, y_values, s=6)
-        plt.title('aic across generations') #change this to reflect user-inputted objective function
-        plt.xlabel('generation')
-        plt.ylabel('aic') #change this to reflect user-inputted objective function
+        plt.title(f'{objective_function} across generations') #change this to reflect user-inputted objective function
+        plt.xlabel('Generation')
+        plt.ylabel(f'{objective_function}') #change this to reflect user-inputted objective function
         if (sum(y_values) < 0):
           plt.gca().invert_yaxis()
         plt.grid(True)

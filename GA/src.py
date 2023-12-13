@@ -42,6 +42,8 @@ def select(data,chromosome_length,outcome_index,population_size=20, generations=
     assert data.map(lambda x: isinstance(x, (int, float))).all().all(), "Data must contain only floats or integers."
     assert population_size % num_sets == 0, "Number of subgroups must be a multiple of population size"
     assert num_sets <= 0.25*population_size, "Number of subgroups (winners) cannot exceed 0.25 * population size"
+    assert isinstance(max_features, int) and max_features > 0, "max_features must be a positive integer"
+    assert max_features <= chromosome_length, "max_features must not exceed number of features in dataset"
 
     population = initialize_population(population_size, chromosome_length, max_features)
     generation_data = Generation_Container()
@@ -183,6 +185,9 @@ def select(data,chromosome_length,outcome_index,population_size=20, generations=
         generation_data.show_all_generations()
     
     if plot_all_generation_data:
-        scores_data.plot_scores(plot_output_path)
+        try:
+            scores_data.plot_scores(plot_output_path, objective_function)
+        except:
+            print("probelm creating chart, most likely an issue with the path provided. see documentation for proper usage")
 
     return generation_data.get_most_recent_individual()
