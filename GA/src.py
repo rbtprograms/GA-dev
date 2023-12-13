@@ -46,7 +46,6 @@ def select(data,chromosome_length,outcome_index,population_size=20, generations=
     assert isinstance(max_features, int) and max_features > 0, "max_features must be a positive integer"
     assert max_features <= chromosome_length, "max_features must not exceed number of features in dataset"
     assert isinstance(mutation_rate, float) and mutation_rate >= 0 and mutation_rate <= 1, "mutation_rate must be of type(float) and must take a value between 0 and 1 (inclusive)."
-    assert all(bit in {0, 1} for bit in chromosome), "Chromosome must be a binary list of 0s and 1s"
     assert data.shape[1] >= 2, "Data must have at least 2 columns."
     assert data.shape[0] >= 20, "Data must have at least 20 rows."
     assert not data.isnull().any().any(), "Data must not contain missing values."
