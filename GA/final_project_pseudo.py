@@ -38,14 +38,14 @@ def select(data,chromosome_length,outcome_index,population_size=20, generations=
     select(data=my_data, population_size=20, chromosome_length=15, generations=50, mutation_rate=0.02, max_features=8, outcome_index=0)
     ```
     """
+
     assert data.map(lambda x: isinstance(x, (int, float))).all().all(), "Data must contain only floats or integers."
-    
+    assert population_size % num_sets == 0, "Number of subgroups must be a multiple of population size"
+    assert num_sets <= 0.25*population_size, "Number of subgroups (winners) cannot exceed 0.25 * population size"
+
     population = initialize_population(population_size, chromosome_length, max_features)
     generation_data = Generation_Container()
     scores_data = Generation_Scores()
-
-    assert population_size % num_sets == 0, "Number of subgroups must be a multiple of population size"
-    assert num_sets <= 0.25*population_size, "Number of subgroups (winners) cannot exceed 0.25 * population size"
 
     for g in range(generations): #main iteration
         
@@ -185,3 +185,4 @@ def select(data,chromosome_length,outcome_index,population_size=20, generations=
     if plot_all_generation_data:
         scores_data.plot_scores(plot_output_path)
 
+    return generation_data.get_most_recent_individual()

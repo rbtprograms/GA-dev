@@ -1,6 +1,6 @@
 import pandas as pd
 import os
-from genetic_algorithm import select
+from GA import select
 
 current_dir = os.getcwd()
 data_folder_path = os.path.join(current_dir, 'examples/data')
@@ -39,8 +39,8 @@ cols_contains_question_mark = (crime_data == '?').sum()
 crime_data_clean = crime_data.loc[:, ~(crime_data == '?').any()]
 nfields = crime_data_clean.shape[1] - 1
 
-print(select(crime_data_clean, chromosome_length=nfields,outcome_index=nfields,population_size=20, generations=100, num_sets=5, mutation_rate=0.02, max_features=50, 
-                     objective_function="AIC", log_outcome=False, regression_type="OLS", print_all_generation_data=True, plot_all_generation_data=True, with_progress_bar=True,
+print(select(crime_data_clean, chromosome_length=nfields,outcome_index=nfields,population_size=40, generations=100, num_sets=10, mutation_rate=0.02, max_features=70, 
+                     objective_function="AIC", log_outcome=False, regression_type="OLS", print_all_generation_data=True, plot_all_generation_data=True, with_progress_bar=True, plot_output_path='/Users/robertthompson/code/robert-thompson/GA-dev/examples',
                      exit_condition_scalar=.00005))
 
 

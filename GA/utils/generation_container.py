@@ -32,3 +32,6 @@ class Generation_Container:
 
     def get_average_score(self):
         return sum(self._generation_scores)/len(self._generation_scores)
+
+    def get_most_recent_individual(self):
+      return self._generation_individuals.pop()
