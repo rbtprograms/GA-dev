@@ -99,7 +99,7 @@ def calculate_fitness(chromosome, data, outcome_index, objective_function="AIC",
     assert data.shape[1] >= 2, "Data must have at least 2 columns."
     assert data.shape[0] >= 20, "Data must have at least 20 rows."
     assert not data.isnull().any().any(), "Data must not contain missing values."
-    assert data.applymap(lambda x: isinstance(x, (int, float))).all().all(), "Data must contain only floats or integers."
+
     assert isinstance(outcome_index, int) and outcome_index >= 0, "Outcome index must be a non-negative integer"
     assert objective_function in ["AIC", "BIC", "Adjusted R-squared", "MSE", "Mallows CP"], \
     "Objective function options are limited to: 'AIC', 'BIC', 'Adjusted R-squared', 'MSE', 'Mallows CP.' If not from list, default calculations are AIC."
@@ -244,7 +244,7 @@ def mutate(chromosome, mutation_rate, max_features):
     - new_chromosome (list): New potentially mutated chromosome.
     
     """
-    print(chromosome)
+    #print(chromosome)
     assert isinstance(mutation_rate, float) and mutation_rate >= 0 and mutation_rate <= 1, \
     "mutation_rate must be of type(float) and must take a value between 0 and 1 (inclusive)."
     assert isinstance(max_features, int) and max_features > 0, "max_features must be a positive integer"
@@ -261,8 +261,8 @@ def mutate(chromosome, mutation_rate, max_features):
 
     return new_chromosome
 
-def select(data,population_size=20, chromosome_length, generations=100, num_sets=5, mutation_rate=0.01, max_features, 
-                      outcome_index, objective_function="AIC", log_outcome=True, regression_type="OLS"):
+def select(data,chromosome_length,outcome_index,population_size=20, generations=100, num_sets=5, mutation_rate=0.01, max_features=20, 
+                      objective_function="AIC", log_outcome=True, regression_type="OLS"):
     """
     Execute a genetic algorithm for feature selection and model optimization.
 
@@ -290,6 +290,7 @@ def select(data,population_size=20, chromosome_length, generations=100, num_sets
     select(data=my_data, population_size=20, chromosome_length=15, generations=50, mutation_rate=0.02, max_features=8, outcome_index=0)
     ```
     """
+    assert data.map(lambda x: isinstance(x, (int, float))).all().all(), "Data must contain only floats or integers."
     
     population = initialize_population(population_size, chromosome_length, max_features)
     generation_data = Generation_Container()
@@ -509,7 +510,7 @@ class Generation_Scores:
 # read in crime data
 current_dir = os.getcwd()
 #only bobbys computer needs GA-dev to be dropped
-data_folder_path = os.path.join(current_dir, 'genetic_algorithm/data')
+data_folder_path = os.path.join(current_dir, 'data')
 # data_folder_path = os.path.join(current_dir, 'GA-dev/genetic_algorithm/data')
 file_path = os.path.join(data_folder_path, 'communities.data')
 data2 = pd.read_csv(file_path, delimiter=',')
@@ -546,8 +547,8 @@ cols_contains_question_mark = (crime_data == '?').sum()
 crime_data_clean = crime_data.loc[:, ~(crime_data == '?').any()]
 nfields = crime_data_clean.shape[1] - 1
 
-print(select(crime_data_clean,population_size=20, chromosome_length=nfields, generations=100, num_sets=5, mutation_rate=0.02, max_features=50, 
-                      outcome_index=nfields, objective_function="AIC", log_outcome=False, regression_type="OLS"))
+print(select(crime_data_clean, chromosome_length=nfields,outcome_index=nfields,population_size=20, generations=100, num_sets=5, mutation_rate=0.02, max_features=50, 
+                     objective_function="AIC", log_outcome=False, regression_type="OLS"))
 
 
 
