@@ -1,4 +1,4 @@
-from genetic_algorithm import generate_random_chromosome, initialize_population, rank, Generation_Container
+from ..utils import *
 
 def test_generate_random_chromosome():
   chromosome_length = 5
@@ -14,25 +14,3 @@ def test_initialize_population():
   assert len(res) == 10
   assert len(res[0]) == 5
 
-def test_rank():
-  scores = [12,65,32,10,11]
-  res = rank(scores)
-  assert type(res) == list
-  assert type(res) == list
-  assert res[0] == 4
-  assert all(number in res for number in range(1, 6))
-
-def test_rank_negatives():
-  scores = [12,-2,32,10,11]
-  res = rank(scores)
-  assert res[0] == 2
-
-def test_save_generation_data():
-  container = Generation_Container()
-  container.add_generation_data(-375, [1,0,0,1,1])
-  container.add_generation_data(-374, [1,0,0,1,1])
-  container.add_generation_data(-373, [1,0,0,1,1])
-  container.add_generation_data(-372, [1,0,0,1,1])
-  container.add_generation_data(-371, [1,0,0,1,1])
-  print(container.check_diff_last_generations(3))
-  assert type(container) == int
