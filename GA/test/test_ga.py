@@ -5,18 +5,32 @@ from ..utils import *
 from GA import select
 
 def test_generate_random_chromosome():
-  chromosome_length = 5
-  res = generate_random_chromosome(chromosome_length, 5)
-  assert type(res) == list
-  assert len(res) == chromosome_length
-  assert all(x in [0, 1] for x in res)
+    chromosome_length = 5
+    res = generate_random_chromosome(chromosome_length, 5)
+    assert type(res) == list
+    assert len(res) == chromosome_length
+    assert all(x in [0, 1] for x in res)
 
 def test_initialize_population():
-  pop_size, chromosome_length = 10, 5
-  res = initialize_population(pop_size, chromosome_length, 5)
-  assert type(res) == list
-  assert len(res) == 10
-  assert len(res[0]) == 5
+    pop_size, chromosome_length = 10, 5
+    res = initialize_population(pop_size, chromosome_length, 5)
+    assert type(res) == list
+    assert len(res) == 10
+    assert len(res[0]) == 5
+
+def test_adjust_chromosome():
+    chrom = [1,1,1,1]
+    res = adjust_chromosome(chrom, 3)
+    assert sum(res) == 3
+
+def test_generation_container():
+    data = Generation_Container()
+    data.add_generation_data(5, [1,0,0])
+    data.add_generation_data(6, [1,1,0])
+    data.add_generation_data(7, [0,1,0])
+    assert data.check_diff_last_generations(2) == 1
+    assert data.get_average_score() ==  6
+    assert data.get_most_recent_individual() ==  [0,1,0]
 
 def test_genetic_algorithm():
     np.random.seed(0)

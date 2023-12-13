@@ -19,17 +19,6 @@ def calculate_fitness(chromosome, data, outcome_index, objective_function="AIC",
     Returns:
     - float: fitness value.
     """
-    assert all(bit in {0, 1} for bit in chromosome), "Chromosome must be a binary list of 0s and 1s"
-    assert isinstance(data, pd.DataFrame), "Data must be a pandas DataFrame"
-    assert data.shape[1] >= 2, "Data must have at least 2 columns."
-    assert data.shape[0] >= 20, "Data must have at least 20 rows."
-    assert not data.isnull().any().any(), "Data must not contain missing values."
-
-    assert isinstance(outcome_index, int) and outcome_index >= 0, "Outcome index must be a non-negative integer"
-    assert objective_function in ["AIC", "BIC", "Adjusted R-squared", "MSE", "Mallows CP"], \
-    "Objective function options are limited to: 'AIC', 'BIC', 'Adjusted R-squared', 'MSE', 'Mallows CP.' If not from list, default calculations are AIC."
-    assert isinstance(log_outcome, bool), "log_outcome must be either True or False"
-    assert regression_type in ["OLS","Ridge","Lasso"], "Regression type options are limited to: 'OLS','Ridge','Lasso'. If not from list, default calculations are OLS."
 
     if log_outcome == True:
         outcome = pd.Series(np.log(data.iloc[:, outcome_index].astype(float)))
@@ -48,10 +37,8 @@ def calculate_fitness(chromosome, data, outcome_index, objective_function="AIC",
     selected_predictors = predictors.loc[:, [bool(x) for x in chromosome]]
     selected_predictors = sm.add_constant(selected_predictors)
 
-    # Convert selected predictors to a NumPy array
     predictors_array = np.asarray(selected_predictors.astype(float))
 
-    # Fit linear regression model
     if regression_type == "Lasso":
         model  = Lasso(alpha=1).fit(predictors_array, outcome_array)
     elif regression_type == "Ridge":

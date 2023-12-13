@@ -27,11 +27,10 @@ class Generation_Container:
             diff += np.abs(self._generation_scores[i] - self._generation_scores[i+1])
         diff = diff/target
 
-        #print(f'{target} generations giving diff of: {diff}')
         return diff
 
     def get_average_score(self):
         return sum(self._generation_scores)/len(self._generation_scores)
 
     def get_most_recent_individual(self):
-      return self._generation_individuals.pop()
+      return self._generation_individuals[-1]

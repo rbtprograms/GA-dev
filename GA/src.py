@@ -38,12 +38,23 @@ def select(data,chromosome_length,outcome_index,population_size=20, generations=
     select(data=my_data, population_size=20, chromosome_length=15, generations=50, mutation_rate=0.02, max_features=8, outcome_index=0)
     ```
     """
-
+    assert isinstance(population_size, int) and population_size > 0, "population_size must be a positive integer"
+    assert isinstance(chromosome_length, int) and chromosome_length > 0, "chromosome_length must be a positive integer"
     assert data.map(lambda x: isinstance(x, (int, float))).all().all(), "Data must contain only floats or integers."
     assert population_size % num_sets == 0, "Number of subgroups must be a multiple of population size"
     assert num_sets <= 0.25*population_size, "Number of subgroups (winners) cannot exceed 0.25 * population size"
     assert isinstance(max_features, int) and max_features > 0, "max_features must be a positive integer"
     assert max_features <= chromosome_length, "max_features must not exceed number of features in dataset"
+    assert isinstance(mutation_rate, float) and mutation_rate >= 0 and mutation_rate <= 1, "mutation_rate must be of type(float) and must take a value between 0 and 1 (inclusive)."
+    assert all(bit in {0, 1} for bit in chromosome), "Chromosome must be a binary list of 0s and 1s"
+    assert data.shape[1] >= 2, "Data must have at least 2 columns."
+    assert data.shape[0] >= 20, "Data must have at least 20 rows."
+    assert not data.isnull().any().any(), "Data must not contain missing values."
+    assert isinstance(outcome_index, int) and outcome_index >= 0, "Outcome index must be a non-negative integer"
+    assert objective_function in ["AIC", "BIC", "Adjusted R-squared", "MSE", "Mallows CP"], \
+    "Objective function options are limited to: 'AIC', 'BIC', 'Adjusted R-squared', 'MSE', 'Mallows CP.' If not from list, default calculations are AIC."
+    assert isinstance(log_outcome, bool), "log_outcome must be either True or False"
+    assert regression_type in ["OLS","Ridge","Lasso"], "Regression type options are limited to: 'OLS','Ridge','Lasso'. If not from list, default calculations are OLS."
 
     population = initialize_population(population_size, chromosome_length, max_features)
     generation_data = Generation_Container()

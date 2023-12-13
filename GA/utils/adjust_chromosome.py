@@ -11,8 +11,7 @@ def adjust_chromosome(chromosome, max_features):
     Returns:
     - list: Adjusted chromosome with the specified max_features.
     """
-    assert all(bit in {0, 1} for bit in chromosome), "Chromosome must be a binary list of 0s and 1s"
-
+    
     current_sum = sum(chromosome)
 
     if current_sum <= max_features:
