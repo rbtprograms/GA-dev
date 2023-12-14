@@ -10,8 +10,12 @@ class Generation_Container:
         self._generation_scores.append(score)
 
     def show_all_generations(self):
-        for i, _ in enumerate(self._generation_individuals):
-            print(f'Generation {i+1} yielded: {self._generation_scores[i]} {self._generation_individuals[i]}')
+        with open('chromosomes.txt', 'w') as file:
+            for i, _ in enumerate(self._generation_individuals):
+                print(f'Generation {i+1}: {self._generation_individuals[i]}', file=file)
+        with open('scores.txt', 'w') as file:
+            for i, _ in enumerate(self._generation_individuals):
+                print(f'Generation {i+1} yielded: {self._generation_scores[i]}', file=file)
 
     def check_last_generations(self, distance_back):
         target = max(0, len(self._generation_individuals) - distance_back)
@@ -23,7 +27,7 @@ class Generation_Container:
         diff = 0
         if len(self._generation_scores) < distance_back + 1:
             return np.abs(self._generation_scores[0])
-        for i, _ in enumerate(self._generation_individuals[target:len(self._generation_individuals) - 1]):
+        for i, _ in enumerate(self._generation_individuals[len(self._generation_individuals)-distance_back:len(self._generation_individuals) - 1]):
             diff += np.abs(self._generation_scores[i] - self._generation_scores[i+1])
         diff = diff/target
 

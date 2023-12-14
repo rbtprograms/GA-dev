@@ -5,8 +5,8 @@ import random
 from .utils import *
 
 def select(data,chromosome_length,outcome_index,population_size=20, generations=100, num_sets=5, mutation_rate=0.01, max_features=20, 
-                      objective_function="AIC", log_outcome=True, regression_type="OLS", exit_condition_scalar=.001, print_all_generation_data=False, plot_all_generation_data=False, 
-                      plot_output_path='', with_progress_bar=False):
+                      objective_function="AIC", log_outcome=True, regression_type="OLS", output_all_generation_data=True, plot_all_generation_data=False, 
+                      with_elitism=False, plot_output_path='', with_progress_bar=False):
     """
     Execute a genetic algorithm for feature selection and model optimization.
 
@@ -23,10 +23,11 @@ def select(data,chromosome_length,outcome_index,population_size=20, generations=
                                "MSE", "Mallows CP". Default is "AIC".
     - log_outcome (bool): True if the outcome variable is on the log scale, False otherwise. Default is True.
     - regression_type (str): The type of regression model. Options are "OLS", "Ridge", "Lasso". Default is "OLS".
-    - exit_condition_scalar (float): A scalar that dictates the tolerance for exiting the iteration. What percentage of AIC difference across generations is a small enough amount to quit.
-    - print_all_generation_data (bool): Flag for if user wants generation data printed to standard output at the end. Will print the most fit individual and their associated score from each generation.
+    - output_all_generation_data (bool): Flag for if user wants generation data outputted to chromosomes.txt and scores.txt. Will print the most fit individual and their associated score from each generation.
     - plot_all_generation_data (bool): Flag for if user wants generation data plotted. Will generate a plot the scores of all individuals from each generation.
-    - with_progress_bar (bool): Flag for if user wants a progress bar. Will display progress for both generations and exit condition.
+    - with_elitism (bool): Will run the algorithm implementing elitism. The highest scoring individual from each generation will be preserved into the next and will continue competing.
+    - plotoutput_path (str): Absolute path for where the generational scoring charts should be generated.
+    - with_progress_bar (bool): Flag for if user wants a progress bar. Will display progress for generations.
 
     Returns:
     - None: The function performs the genetic algorithm for feature selection and model optimization,
@@ -40,7 +41,7 @@ def select(data,chromosome_length,outcome_index,population_size=20, generations=
     """
     assert isinstance(population_size, int) and population_size > 0, "population_size must be a positive integer"
     assert isinstance(chromosome_length, int) and chromosome_length > 0, "chromosome_length must be a positive integer"
-    assert data.map(lambda x: isinstance(x, (int, float))).all().all(), "Data must contain only floats or integers."
+    # assert data.map(lambda x: isinstance(x, (int, float))).all().all(), "Data must contain only floats or integers."
     assert population_size % num_sets == 0, "Number of subgroups must be a multiple of population size"
     assert num_sets <= 0.25*population_size, "Number of subgroups (winners) cannot exceed 0.25 * population size"
     assert isinstance(max_features, int) and max_features > 0, "max_features must be a positive integer"
@@ -88,8 +89,14 @@ def select(data,chromosome_length,outcome_index,population_size=20, generations=
             for loser in losers:
                 all_losers.append(loser)
 
-        #parent selection and child generation
+        if with_elitism:
+            winner_data = Generation_Scores()
+            winner_scores = [[individual,calculate_fitness(individual, data, outcome_index, objective_function, log_outcome, regression_type)] for individual in all_winners]
+            scores_data.add_scores(winner_scores)
+            gen_max_winner = max(winner_scores, key=lambda x: abs(x[1]))
+            new_population.append(gen_max_winner[0])
 
+        #parent selection and child generation
         while len(all_winners) > 1:
             parent2_winner = random.uniform(0,1) < 0.8
             if parent2_winner: #winner mate selected
@@ -173,31 +180,43 @@ def select(data,chromosome_length,outcome_index,population_size=20, generations=
         gen_max_individual_data = max(gen_scores, key=lambda x: abs(x[1]))
 
         generation_data.add_generation_data(gen_max_individual_data[1], gen_max_individual_data[0])
-        exit_condition_score = generation_data.get_average_score()*exit_condition_scalar
-
+    
         if with_progress_bar:
-            progress_bar(curr_generation=g, generations=generations, generation_data=generation_data, exit_condition_score=exit_condition_score)
+            progress_bar(curr_generation=g, generations=generations, generation_data=generation_data)
         
         # terminate if the max fitness score in a generation converges
         if g == 0:
             None
-        #print(generation_data.get_average_score()*.001)
-        if generation_data.check_diff_last_generations(5) < abs(exit_condition_score):
-            print(f'\nEXIT CONDITION MET ON GENERATION {g + 1}')
-            break
         if g==100:
             break
         
         population = new_population #non-overlapping generations
+<<<<<<< HEAD
         
+    if output_all_generation_data:
+=======
+    
     print(' ')
     if print_all_generation_data:
+>>>>>>> 364c4ae237ce5d873030b5beac4d411f3a52a673
         generation_data.show_all_generations()
     
     if plot_all_generation_data:
         try:
             scores_data.plot_scores(plot_output_path, objective_function)
         except:
-            print("probelm creating chart, most likely an issue with the path provided. see documentation for proper usage")
+            print("problem creating chart, most likely an issue with the path provided. see documentation for proper usage")
 
-    return generation_data.get_most_recent_individual()
+    final_chrom = generation_data.get_most_recent_individual()
+
+    if outcome_index > 0:
+        predictors_1 = data.iloc[:, :outcome_index]
+        predictors = pd.concat([predictors_1, data.iloc[:, outcome_index+1:]], axis=1)
+    else:
+        predictors = data.iloc[:, outcome_index+1:]
+    
+    assert len(predictors.columns) == len(final_chrom), "Predictor dataframe different dimension than final chromosome. Exiting."
+    
+    top_predictors=[predictors.columns[i] for i in range(len(predictors.columns)) if bool(final_chrom[i])]
+
+    return top_predictors
