@@ -23,7 +23,7 @@ class Generation_Container:
         diff = 0
         if len(self._generation_scores) < distance_back + 1:
             return np.abs(self._generation_scores[0])
-        for i, _ in enumerate(self._generation_individuals[target:len(self._generation_individuals) - 1]):
+        for i, _ in enumerate(self._generation_individuals[len(self._generation_individuals)-distance_back:len(self._generation_individuals) - 1]):
             diff += np.abs(self._generation_scores[i] - self._generation_scores[i+1])
         diff = diff/target
 

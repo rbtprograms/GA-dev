@@ -33,12 +33,14 @@ def calculate_fitness(chromosome, data, outcome_index, objective_function="AIC",
         predictors = pd.concat([predictors_1, data.iloc[:, outcome_index+1:]], axis=1)
     else:
         predictors = data.iloc[:, outcome_index+1:]
-    
+    #print(chromosome)
     selected_predictors = predictors.loc[:, [bool(x) for x in chromosome]]
     selected_predictors = sm.add_constant(selected_predictors)
 
+    # Convert selected predictors to a NumPy array
     predictors_array = np.asarray(selected_predictors.astype(float))
 
+    # Fit linear regression model
     if regression_type == "Lasso":
         model  = Lasso(alpha=1).fit(predictors_array, outcome_array)
     elif regression_type == "Ridge":
