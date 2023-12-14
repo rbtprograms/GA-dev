@@ -5,7 +5,7 @@ import random
 from .utils import *
 
 def select(data,chromosome_length,outcome_index,population_size=20, generations=100, num_sets=5, mutation_rate=0.01, max_features=20, 
-                      objective_function="AIC", log_outcome=True, regression_type="OLS", print_all_generation_data=False, plot_all_generation_data=False, 
+                      objective_function="AIC", log_outcome=True, regression_type="OLS", output_all_generation_data=True, plot_all_generation_data=False, 
                       with_elitism=False, plot_output_path='', with_progress_bar=False):
     """
     Execute a genetic algorithm for feature selection and model optimization.
@@ -23,7 +23,7 @@ def select(data,chromosome_length,outcome_index,population_size=20, generations=
                                "MSE", "Mallows CP". Default is "AIC".
     - log_outcome (bool): True if the outcome variable is on the log scale, False otherwise. Default is True.
     - regression_type (str): The type of regression model. Options are "OLS", "Ridge", "Lasso". Default is "OLS".
-    - print_all_generation_data (bool): Flag for if user wants generation data printed to standard output at the end. Will print the most fit individual and their associated score from each generation.
+    - output_all_generation_data (bool): Flag for if user wants generation data outputted to chromosomes.txt and scores.txt. Will print the most fit individual and their associated score from each generation.
     - plot_all_generation_data (bool): Flag for if user wants generation data plotted. Will generate a plot the scores of all individuals from each generation.
     - with_elitism (bool): Will run the algorithm implementing elitism. The highest scoring individual from each generation will be preserved into the next and will continue competing.
     - plotoutput_path (str): Absolute path for where the generational scoring charts should be generated.
@@ -41,7 +41,7 @@ def select(data,chromosome_length,outcome_index,population_size=20, generations=
     """
     assert isinstance(population_size, int) and population_size > 0, "population_size must be a positive integer"
     assert isinstance(chromosome_length, int) and chromosome_length > 0, "chromosome_length must be a positive integer"
-    assert data.map(lambda x: isinstance(x, (int, float))).all().all(), "Data must contain only floats or integers."
+    # assert data.map(lambda x: isinstance(x, (int, float))).all().all(), "Data must contain only floats or integers."
     assert population_size % num_sets == 0, "Number of subgroups must be a multiple of population size"
     assert num_sets <= 0.25*population_size, "Number of subgroups (winners) cannot exceed 0.25 * population size"
     assert isinstance(max_features, int) and max_features > 0, "max_features must be a positive integer"
@@ -192,7 +192,7 @@ def select(data,chromosome_length,outcome_index,population_size=20, generations=
         
         population = new_population #non-overlapping generations
         
-    if print_all_generation_data:
+    if output_all_generation_data:
         generation_data.show_all_generations()
     
     if plot_all_generation_data:
@@ -201,4 +201,16 @@ def select(data,chromosome_length,outcome_index,population_size=20, generations=
         except:
             print("problem creating chart, most likely an issue with the path provided. see documentation for proper usage")
 
-    return generation_data.get_most_recent_individual()
+    final_chrom = generation_data.get_most_recent_individual()
+
+    if outcome_index > 0:
+        predictors_1 = data.iloc[:, :outcome_index]
+        predictors = pd.concat([predictors_1, data.iloc[:, outcome_index+1:]], axis=1)
+    else:
+        predictors = data.iloc[:, outcome_index+1:]
+    
+    assert len(predictors.columns) == len(final_chrom), "Predictor dataframe different dimension than final chromosome. Exiting."
+    
+    top_predictors=[predictors.columns[i] for i in range(len(predictors.columns)) if bool(final_chrom[i])]
+
+    return top_predictors
