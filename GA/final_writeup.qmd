@@ -18,17 +18,17 @@ execute:
 ---
 
 ## I. Package Details
-Our collaborative effort for this final project develops a Python package called `GA`, designed to implement genetic algorithms for variable selection. The package supports user-flexible inputs to produce a user-friendly, modular, and efficient solution that withstands rigorous testing. Our Python package `GA` contains three subdirectories: `data` (which contains the baseball and communities example data sets), `test` (which contains `test_ga.py` performing a set of tests on our functions and genetic algorithm), and `utils` (which the supporting functions in separate files). The main function `select` is in the `src.py` file in the `GA` directory.
+Our collaborative effort for this final project develops a Python package called `GA`, designed to implement genetic algorithms for variable selection. The package supports user-flexible inputs to produce a modular and efficient solution that withstands rigorous testing. Our Python package `GA` contains three subdirectories: `data` (which contains the baseball and communities example data sets), `test` (which contains `test_ga.py` performing a set of tests on our functions and genetic algorithm), and `utils` (which the supporting functions in separate files). The main function `select` is in the `src.py` file in the `GA` directory.
 
 ## II. Main Function: `select`
 
 Our main function `select` implements the genetic algorithm for feature selection and model optimization. This algorithm aims to evolve a population of potential solutions, where each solution represents a subset of features for a regression model. The primary goal is to maximize a specified objective function, options including the Akaike Information Criterion (AIC), Bayesian Information Criterion (BIC), Adjusted R-squared, Mean Squared Error (MSE), or Mallows CP. The function takes various parameters, including the input dataset, population size, chromosome length, number of generations, mutation rate, number of maximum features, the index of the outcome variable from the dataset, whether or not the outcome is on the log scale, the chosen objective function, the regression type (OLS, Ridgee, Lasso), and other output settings. These inputs allow user flexibility in regression type, objective function, and other model specification.
 
-Within the function, the key steps of the genetic algorithm include the initialization of the population, tournament selection of parents, crossover and mutation operations, and reproduction of new individuals. Assertions are used to enforce certain conditions, such as ensuring that the number of subgroups is a multiple of the population size and that the number of subgroups does not exceed 25% of the population size. A notable design decision is the use of tournament selection, where winners and losers are selected from randomly created subgroups. This approach helps maintain diversity in the population and allows individuals with higher fitness to be chosen as parents for the next generation. The function also includes a mechanism to terminate the algorithm if the maximum fitness score in a generation converges. *The model prints the highest scoring individual from each generation in the form of a binary string which corresponds to the data features. It also plots the fitness function values from each generation. (is this still correct as the output of the model?)*
+Within the function, the key steps of the genetic algorithm include the initialization of the population, tournament selection of parents, crossover and mutation operations, and reproduction of new individuals. Assertions are used to enforce certain conditions, such as ensuring that the number of subgroups is a multiple of the population size and that the number of subgroups does not exceed 25% of the population size. A notable design decision is the use of tournament selection, where winners and losers are selected from randomly created subgroups. This approach helps maintain diversity in the population and allows individuals with higher fitness to be chosen as parents for the next generation. The function also includes a mechanism to terminate the algorithm if the maximum fitness score in a generation converges. The model prints the highest scoring individual from each generation in the form of a binary string which corresponds to the data features, in addition to the corresponding feature names. It also plots the fitness function values for the population from each generation.
 
 ## III. Supporting Code
 
-The supporting code for our `GA` package, located in the `utils` subdirectory, collectively contributes to the successful execution of the primary function `select` for variable selection in linear models. The functions are organized to perform discrete tasks, contributing to the overall modularity and readability of the code. Here, we highlight key supporting functions within our `GA` package:
+The supporting code for our `GA` package, located in the `utils` subdirectory, collectively contributes to the primary function `select` for variable selection in linear models. The functions are organized to perform discrete tasks, contributing to the overall modularity and readability of the code. Here, we highlight key supporting functions within our `GA` package:
 
 -   `initialize_population` returns a list of random chromosomes to generate an initial population
 
@@ -52,20 +52,42 @@ Our testing strategy aims to ensure the correctness and robustness of our geneti
 
 ## V. Results and Examples
 
-The first example we tested our algorithm on was the baseball data. The success of our results was based on those given in the Givens and Hoeting reading for the same baseball example, where they apply a genetic algorithm to predict baseball salary on the log scale. Using similar parameters (population size 20, mutation rate 1%, AIC, etc.), our model yields a very similar negative AIC score to their best model.
+The first example we tested our algorithm on was the baseball data. The success of our results was based on those given in the Givens and Hoeting reading for the same baseball example, where they apply a genetic algorithm to predict baseball salary on the log scale. Using similar parameters (population size 20, mutation rate 1%, AIC, etc.), our model yields a very similar negative AIC score to their best model. 
 
-`Generation 100 yielded: -414.0165616288964 [1, 0, 1, 0, 0, 0, 0, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 0]`
+```{python}
+#|eval: false
+# baseball example
+print(select(data, population_size=20, chromosome_length=27, generations=100, mutation_rate=0.01,\
+    max_features=27, outcome_index=0, objective_function="AIC", log_outcome=True, \
+    print_all_generation_data=True, with_elitism=True, plot_all_generation_data=True, \
+    with_progress_bar=True))
+```
+
+`Generation 100 yielded: -413.1105968717522 [0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1, 0, 1, 1, 1, 1, 1, 0, 0, 1, 0, 1, 0, 0, 0, 0, 1]`
+
+`['runs', 'rbis', 'sos', 'sbs', 'freeagent', 'arbitration', 'runsperso', 'hitsperso', 'hrsperso', 'obppererror', 'hitspererror', 'sbshits']`
 
 ![Baseball Example Generation Plot](/Users/johnkim/GA-dev/GA/87179b7c-756d-4687-8f0b-6ad667dd3897.png){ width=50% }
 
-The other example we tested our algorithm on was a communities-crime data set with about 100 features. We applied our genetic algorithm to a model predicting violent crime rate.
+The other example we tested our algorithm on was a communities-crime data set with about 100 features which predicts violent crime rate. 
 
-`Generation 100 yielded: -7989.985038321968 [1, 0, 1, 0, 0, 0, 0, 1, 0, 1, 0, 1, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 0, 1, 0, 0, 0, 1, 0, 0, 1, 1, 1, 1, 0, 1, 0, 1, 0, 0, 1, 0, 1, 1, 1, 0, 0, 1, 1, 1, 0, 1, 0, 0, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 0, 1, 1, 0, 1, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 1, 1, 0, 1, 1, 0, 1, 0, 0, 0, 0, 0, 0]`
+```{python}
+#|eval: false
+#crime example
+print(select(crime_data_clean, chromosome_length=nfields,outcome_index=nfields,population_size=40,\
+    generations=100, num_sets=10, mutation_rate=0.02, max_features=70,with_elitism=True,\ 
+    objective_function="AIC", log_outcome=False, regression_type="OLS", \
+    print_all_generation_data=True, plot_all_generation_data=True, with_progress_bar=True))
+```
+
+`Generation 100 yielded: -7991.832489544436 [0, 0, 1, 0, 0, 0, 1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 0, 1, 1, 0, 0, 0, 1, 1, 0, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0, 1, 0, 1, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 0, 0, 0, 1, 1, 0, 1, 1, 0, 1, 0, 0, 1, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0, 1]`
+
+`['racepctblack', 'agePct12t21', 'agePct12t29', 'agePct16t24', 'numbUrban', 'pctUrban', 'medIncome', 'pctWWage', 'pctWInvInc', 'pctWSocSec', 'medFamInc', 'perCapInc', ... ]` (abridged for space)
 
 ![Crime Example Generation Plot](/Users/johnkim/GA-dev/GA/936d0d57-7408-40df-9b2b-2b512595f741.png){ width=50% }
 
 ## VI. Contributions of Team Members & Collaboration
 
-Our group collaborated effectively to organize tasks and implement significant contributions to the project. Eleanor started by outlining the variable selection method details from the Givens and Hoeting text, after which she compiled a pseudo code outline for the genetic algorithm. Modular functions were then formalized, with Eleanor taking care of the supporting code that initialized the population and calculated the fitness function for the various objective function options, while Kailey took care of `adjust_chromosome`, `select_tournament_winners`, `crossover`, and `mutate`. Kailey also wrote most of the main function `select`, including implementing tournament selection, selecting each parent pair, generating new children, and filling next generation with offspring. Bobby wrote the `Generation_Container` and `Generation_Scores` classes. Eleanor prepared example data sets for testing the algorithm. Kailey tested each objective function and generated preliminary plots. Lastly, Eleanor was in charge of organizing this solution write-up, synthesizing and presenting the team's collective efforts.
+Our group collaborated effectively to organize tasks and implement significant contributions to the project. Eleanor started by outlining the variable selection method details from the Givens and Hoeting text, after which she compiled a pseudo code outline for the genetic algorithm. Modular functions were then formalized, with Kailey writing `adjust_chromosome`, `select_tournament_winners`, `crossover`, and `mutate`, while Eleanor wrote the supporting code that initialized the population and calculated the fitness function for the various objective function options. Kailey wrote most of the main function `select`, including implementing tournament selection, selecting each parent pair, generating new children, and filling next generation with offspring. Eleanor prepared example data sets for testing the algorithm. Kailey tested each objective function and generated preliminary plots. Lastly, Eleanor organized this solution write-up, synthesizing and presenting the team's collective efforts.
 
-Our collaboration primarily leveraged GitHub for effective version control and seamless teamwork. Throughout the project, we followed a centralized version control model, all working on the same main branch. This approach simplified the coordination of our efforts, allowing us to push and pull changes from our local machines to the shared repository. The GitHub repository for our project is accessible at: \[ GitHub repository URL\].
+Our collaboration primarily leveraged GitHub for effective version control and seamless teamwork. Throughout the project, we followed a centralized version control model, all working on the same main branch. This approach simplified the coordination of our efforts, allowing us to push and pull changes from our local machines to the shared repository. The GitHub repository for our project is accessible at: **https://github.com/rbtprograms/GA-dev.git**
