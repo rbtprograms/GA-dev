@@ -15,11 +15,6 @@ def mutate(chromosome, mutation_rate, max_features):
     - new_chromosome (list): New potentially mutated chromosome.
     
     """
-    #print(chromosome)
-    assert isinstance(mutation_rate, float) and mutation_rate >= 0 and mutation_rate <= 1, \
-    "mutation_rate must be of type(float) and must take a value between 0 and 1 (inclusive)."
-    assert isinstance(max_features, int) and max_features > 0, "max_features must be a positive integer"
-    assert max_features <= len(chromosome), "max_features must not exceed number of features in dataset"
 
     # mutation == True with probability 0.01, False otherwise
     mutation = [random.random() < mutation_rate for i in range(len(chromosome))]
