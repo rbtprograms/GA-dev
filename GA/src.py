@@ -191,7 +191,8 @@ def select(data,chromosome_length,outcome_index,population_size=20, generations=
             break
         
         population = new_population #non-overlapping generations
-        
+    
+    print(' ')
     if print_all_generation_data:
         generation_data.show_all_generations()
     

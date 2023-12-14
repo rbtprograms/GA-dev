@@ -40,7 +40,7 @@ crime_data_clean = crime_data.loc[:, ~(crime_data == '?').any()]
 nfields = crime_data_clean.shape[1] - 1
 
 print(select(crime_data_clean, chromosome_length=nfields,outcome_index=nfields,population_size=40, generations=100, num_sets=10, mutation_rate=0.02, max_features=70,with_elitism=True,
-                     objective_function="AIC", log_outcome=False, regression_type="OLS", print_all_generation_data=True, plot_all_generation_data=True, with_progress_bar=True, plot_output_path='/Users/robertthompson/code/robert-thompson/GA-dev/examples',))
+                     objective_function="AIC", log_outcome=False, regression_type="OLS", print_all_generation_data=False, plot_all_generation_data=False, with_progress_bar=True))
 
 
 
