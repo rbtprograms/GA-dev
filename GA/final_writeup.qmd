@@ -1,0 +1,92 @@
+---
+title: "Stat 243 Final Project Submission"
+subtitle: "Robert Thompson, Kailey Ferger, and Eleanor Kim"
+format:
+  pdf:
+    documentclass: article
+    margin-left: 30mm
+    margin-right: 30mm
+    toc: false
+  html:
+    theme: cosmo
+    css: ../styles.css
+    toc: false
+    code-copy: true
+    code-block-background: true
+execute:
+  freeze: auto
+---
+
+## I. Package Details
+Our collaborative effort for this final project develops a Python package called `GA`, designed to implement genetic algorithms for variable selection in linear models. The package supports user-flexible inputs, including regression types, objective functions, and various parameter specifications, to produce a user-friendly, modular, and efficient solution that withstands rigorous testing. 
+Our Python package `GA` contains three subdirectories: `data` (which contains the baseball and communities example data sets), `test` (which contains a python script of a set of tests on our functions and genetic algorithm), and `utils` (which contains separate files of the supporting functions). The main function `select` is in the `src.py` file in the `GA` directory.
+
+## II. Main Function: `select`
+
+Our main function `select` implements the genetic algorithm for feature selection and model optimization. This algorithm aims to evolve a population of potential solutions, where each solution represents a subset of features for a regression model. The primary goal is to maximize a specified objective function, options including the Akaike Information Criterion (AIC), Bayesian Information Criterion (BIC), Adjusted R-squared, Mean Squared Error (MSE), or Mallows CP. The function takes various parameters, including the input dataset, population size, chromosome length, number of generations, mutation rate, and other settings related to the regression model. These inputs allow user flexibility in regression type, objective function, and other model specifications.
+
+Within the function, the key steps of the genetic algorithm include the initialization of the population, tournament selection of parents, crossover and mutation operations, and reproduction of new individuals. Assertions are used to enforce certain conditions, such as ensuring that the number of subgroups is a multiple of the population size and that the number of subgroups does not exceed 25% of the population size. A notable design decision is the use of tournament selection, where winners and losers are selected from randomly created subgroups. This approach helps maintain diversity in the population and allows individuals with higher fitness to be chosen as parents for the next generation. The function also includes a mechanism to terminate the algorithm if the maximum fitness score in a generation converges. The model prints the highest scoring individual from each generation in the form of a binary string which corresponds to the data features. It also plots the fitness function values from each generation.
+
+## III. Supporting Code
+
+The supporting code for our `GA` package, located in the `utils` subdirectory, collectively contributes to the successful execution of the primary function `select` for variable selection in linear models. The supporting functions are organized to perform discrete tasks, contributing to the overall modularity and readability of the code. Here, we highlight key supporting functions within our `GA` package:
+
+-   initialize_population
+
+    -   Parameters: population_size, chromosome_length, and max_features.
+
+    -   Returns: A list of random chromosomes to genreate an initial population.
+
+-   adjust_chromosome
+
+    -   Parameters: chromosome and max_features.
+
+    -   Returns: An adjusted chromosome with the specified max_features.
+
+-   generate_random_chromosome
+
+    -   Parameters: chromosome_length and max_features.
+
+    -   Returns: A random chromosome with 0s and 1s.
+
+-   calculate_fitness
+
+    -   Parameters: chromosome, data, outcome_index, objective_function, and log_outcome, regression type.
+
+    -   Returns: The fitness value calculated using the chosen objective function.
+
+-   select_tournament_winners
+
+    -   Parameters: population, winners_per_subgroup, data, outcome_index, objective_function, and log_outcome.
+
+    -   Returns: Lists of winners and losers for the tournament.
+
+-   crossover
+
+    -   Parameters: parent1, parent2, and population_size.
+
+    -   Returns: The offspring chromosome resulting from crossover.
+
+-   mutate
+
+    -   Parameters: chromosome, mutation_rate, and max_features.
+
+    -   Returns: The potentially mutated chromosome.
+
+## IV. Formal Tests with Pytest
+
+Discuss the setup of formal tests using pytest. Provide examples of test cases and their expected outcomes. Emphasize the importance of testing for robustness. Discuss the testing process employed within the team. Mention any challenges faced during testing and how they were addressed.
+
+## V. Results and Examples
+
+Highlight working examples in the example section. Present the results of applying the implementation to example datasets. Discuss any notable insights or observations from the results.
+
+## VI. Contributions of Team Members & Collaboration
+
+Bobby:
+
+Kailey:
+
+Eleanor contributed to the project first by outlining chapter notes from the Givens and Hoeting reading, after which she compiled a pseudo code outline for the genetic algorithm. After meeting as a group, Eleanor formalized the supporting code functions for initializing the population and calculating the fitness function after researching various objective function options. For documentation and clarity, she formatted doc strings and assertions for code readability and functionality. Furthermore, Eleanor prepared example data sets for testing the algorithm. Lastly, she was in charge of organizing this solution write-up, synthesizing and presenting the team's collective efforts.
+
+Our collaboration primarily leveraged Git and GitHub for effective version control and seamless teamwork. Throughout the project, we followed a centralized version control model, all working on the same main branch. This approach simplified the coordination of our efforts, allowing us to push and pull changes effortlessly from our local machines to the shared repository. While we didn't implement specific branching or workflow strategies, our collaborative efforts were well-coordinated through continuous communication and regular updates on the main branch. The GitHub repository for our project is accessible at: \[ GitHub repository URL\].
