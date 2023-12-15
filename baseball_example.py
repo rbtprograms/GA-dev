@@ -3,7 +3,7 @@ import os
 from GA import select
 
 current_dir = os.getcwd()
-data_folder_path = os.path.join(current_dir, 'examples/data')
+data_folder_path = os.path.join(current_dir, 'data')
 file_path = os.path.join(data_folder_path, 'baseball.dat')
 data = pd.read_csv(file_path, delimiter=' ')
 

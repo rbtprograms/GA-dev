@@ -4,7 +4,7 @@ import sys
 from GA import select
 
 current_dir = os.getcwd()
-data_folder_path = os.path.join(current_dir, 'examples/data')
+data_folder_path = os.path.join(current_dir, 'data')
 file_path = os.path.join(data_folder_path, 'communities.data')
 data = pd.read_csv(file_path, delimiter=',')
 crime_data = data.iloc[:, 5:] #remove some parameters
