@@ -3,3 +3,5 @@ genetic_algorithm/__pycache__
 genetic_algorithm/__pycache__/*
 .pytest_cache
 examples/baseball_pred.py
+chromosomes.txt
+scores.txt
