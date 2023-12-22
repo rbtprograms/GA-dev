@@ -1,0 +1,69 @@
+B+
+
+## ease of accessing package, help, tests:
+
+Fine.
+
+## main help page (select):
+
+Some things are hard to understand.
+
+Not entirely clear what `log_outcome` does. Only by looking at the code do I see this is whether the user wants the log to be taken within the algorithm.
+Parameters not in same order as arguments so hard to read.
+
+One example.
+
+## quality of user interface (function arguments, flexibility):
+
+Why is `chromosome_length` required? You could determine it from `data`.
+
+Also, requiring user to adjust `max_features` is not user friendly. It should default to the number of independent variables.
+
+You should return output to the user to use in subsequent analysis, not just print to the screen.
+
+It looks like you return the best model from the last iteration rather than the best model overall?
+
+Control over the output feels somewhat complicated.
+
+Limited flexibility in terms of user control over GA.
+
+## performance on my tests:
+
+performance on baseball known: finds best model;   12 sec.
+performance on baseball full: finds a good model, but not the best;  20 sec.
+performance on big-p: can't run GLM
+
+## testing
+
+Limited tests.
+
+Test failure: TypeError: select() got an unexpected keyword argument 'exit_condition_scalar'. It looks like the test file is truncated.
+
+## writeup (including examples):
+
+Clear and detailed.
+
+One basic simulated example and one additional example. No assessment of whether a good model was obtained for the crime dataset. No comparison with Lasso-selected models.
+
+## code efficiency
+
+Ok.
+
+It looks like you recalculate fitness unnecessarily when elitism is used.
+
+
+## code organization/clarity/elegance:
+
+Ok, though I found some of the variable made it hard to follow what was going on.
+
+Code for selection/child generation somewhat hard to follow. 
+
+I don't understand the convergence criterion. Why do you check if `g=100` and where do you assess "if the maximum fitness core in a generation converges" (also I don't understand what that means - what does it mean to converge "in a generation" and how is it assessed?)
+
+## code comments/formatting:
+
+Some additional commenting would help.
+
+## equality of workload:
+
+Good.
