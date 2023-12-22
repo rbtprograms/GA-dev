@@ -1,4 +1,6 @@
-B+
+Grade: 88
+
+Overall: Most of the pieces are here, but various limitations noted below.
 
 ## ease of accessing package, help, tests:
 
@@ -50,7 +52,6 @@ One basic simulated example and one additional example. No assessment of whether
 Ok.
 
 It looks like you recalculate fitness unnecessarily when elitism is used.
-
 
 ## code organization/clarity/elegance:
 
